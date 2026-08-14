@@ -1,31 +1,171 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, MapPin, Star, CreditCard, TrendingUp, Clock,
   CheckCircle, XCircle, ChevronRight, Plus, Bell, LayoutDashboard,
-  History, Settings, LogOut, Navigation, Zap, Share2, ArrowRight,
-  Phone, X
+  History, Settings, LogOut, Navigation, Zap, Share2,
+  AlertTriangle, Loader2
 } from 'lucide-react'
 import Link from 'next/link'
-import { mockTrips, currentUser, fareEstimates, vehicleEmojis, vehicleLabels, type VehicleType, mockVehicles, type Vehicle, type Trip } from '@/lib/mock-data'
-import { formatCurrency, formatDate, calculateCreditProgress, getInitials } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
+import {
+  loyaltyApi, notificationsApi, transactionsApi, tripsApi, vehiclesApi, walletApi
+} from '@/lib/api'
+import {
+  currentUser as mockUser, mockTrips, vehicleEmojis, vehicleLabels
+} from '@/lib/mock-data'
+import {
+  formatCurrency, formatDate, formatDateTime, calculateCreditProgress, getInitials,
+  tripStatusColor, transactionStatusColor, vehicleStatusColor
+} from '@/lib/utils'
+import type { NotificationOut, TransactionOut, TripOut, VehicleCategory, VehicleOut } from '@/lib/types'
 
 type Tab = 'overview' | 'trips' | 'wallet' | 'book'
 
 export default function CommuterDashboard() {
+  const { user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
-  const [selectedRideType, setSelectedRideType] = useState<VehicleType>('matatu')
-  const [showPaymentOverlay, setShowPaymentOverlay] = useState(false)
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [localTrips, setLocalTrips] = useState<Trip[]>(mockTrips)
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
 
-  const completedTrips = localTrips.filter(t => t.status === 'completed')
-  const activeTrip = localTrips.find(t => t.status === 'active')
-  const creditProgress = calculateCreditProgress(currentUser.totalTrips)
-  const totalEarned = completedTrips.reduce((s, t) => s + t.points, 0)
+  // Live data
+  const [wallet, setWallet] = useState<{ balance: string; currency: string } | null>(null)
+  const [loyalty, setLoyalty] = useState<{ points_balance: number; completed_trip_count: number; is_credit_eligible: boolean } | null>(null)
+  const [trips, setTrips] = useState<TripOut[]>([])
+  const [transactions, setTransactions] = useState<TransactionOut[]>([])
+  const [notifications, setNotifications] = useState<NotificationOut[]>([])
+  const [nearbyVehicles, setNearbyVehicles] = useState<VehicleOut[]>([])
+
+  // UI state
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [error, setError] = useState<string | null>(null)
+
+  // Forms
+  const [topupAmount, setTopupAmount] = useState('')
+  const [topupStatus, setTopupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [topupMsg, setTopupMsg] = useState('')
+
+  const [selectedRideType, setSelectedRideType] = useState<VehicleCategory>('matatu')
+  const [fromLoc, setFromLoc] = useState('CBD')
+  const [toLoc, setToLoc] = useState('Westlands')
+  const [bookingStatus, setBookingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [createdTrip, setCreatedTrip] = useState<TripOut | null>(null)
+
+  const displayName = user?.full_name || user?.phone_number || mockUser.name
+
+  const load = async (key: string, fn: () => Promise<void>) => {
+    setLoading((p) => ({ ...p, [key]: true }))
+    try { await fn() } catch (err) { console.error(err) }
+    setLoading((p) => ({ ...p, [key]: false }))
+  }
+
+  useEffect(() => {
+    load('initial', async () => {
+      try {
+        const [w, l, t, tx, n] = await Promise.all([
+          walletApi.me(),
+          loyaltyApi.get(),
+          tripsApi.list(),
+          transactionsApi.list(),
+          notificationsApi.list(),
+        ])
+        setWallet(w)
+        setLoyalty(l)
+        setTrips(t)
+        setTransactions(tx)
+        setNotifications(n)
+      } catch (err) {
+        setError('Some live data could not be loaded. Using demo data where available.')
+        // fall back to mock trips for display if needed
+      }
+    })
+
+    // try to load nearby vehicles around Nairobi CBD
+    load('nearby', async () => {
+      try {
+        const res = await vehiclesApi.nearby(-1.2921, 36.8219)
+        setNearbyVehicles(res.vehicles.slice(0, 4))
+      } catch { /* ignore */ }
+    })
+  }, [])
+
+  const activeTrip = useMemo(() => trips.find((t) => t.status === 'in_progress'), [trips])
+  const completedTrips = useMemo(() => trips.filter((t) => t.status === 'completed'), [trips])
+  const totalPoints = loyalty?.points_balance ?? 0
+  const totalTrips = loyalty?.completed_trip_count ?? completedTrips.length
+  const creditProgress = calculateCreditProgress(totalTrips)
+
+  const handleTopup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setTopupStatus('loading')
+    try {
+      const res = await walletApi.topup({ amount: parseFloat(topupAmount) })
+      setTopupStatus('success')
+      setTopupMsg(`Top-up initiated: ${res.checkout_request_id || res.id}. Check your phone to complete M-Pesa payment.`)
+      const w = await walletApi.me()
+      setWallet(w)
+    } catch (err) {
+      setTopupStatus('error')
+      setTopupMsg(err instanceof Error ? err.message : 'Top-up failed')
+    }
+  }
+
+  const handleBook = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBookingStatus('loading')
+    try {
+      // Use Nairobi coordinates placeholders
+      const coords: Record<string, { lat: number; lng: number }> = {
+        CBD: { lat: -1.2921, lng: 36.8219 },
+        Westlands: { lat: -1.2672, lng: 36.8100 },
+        Eastleigh: { lat: -1.2742, lng: 36.8365 },
+        Karen: { lat: -1.3192, lng: 36.7800 },
+        Kasarani: { lat: -1.2200, lng: 36.8900 },
+        Rongai: { lat: -1.3955, lng: 36.7664 },
+        Parklands: { lat: -1.2616, lng: 36.8174 },
+        JKIA: { lat: -1.3223, lng: 36.9277 },
+        Kilimani: { lat: -1.2888, lng: 36.7876 },
+        Roysambu: { lat: -1.2138, lng: 36.8867 },
+      }
+      const pickup = coords[fromLoc] || coords.CBD
+      const dropoff = coords[toLoc] || coords.Westlands
+
+      const trip = await tripsApi.create({
+        category: selectedRideType,
+        pickup_lat: pickup.lat,
+        pickup_lng: pickup.lng,
+        dropoff_lat: dropoff.lat,
+        dropoff_lng: dropoff.lng,
+      })
+      setCreatedTrip(trip)
+      setBookingStatus('success')
+      const updated = await tripsApi.list()
+      setTrips(updated)
+    } catch (err) {
+      setBookingStatus('error')
+    }
+  }
+
+  const handleShare = async (trip: TripOut) => {
+    try {
+      const { share_url } = await tripsApi.shareLink(trip.id)
+      if (navigator.share) {
+        await navigator.share({ title: 'My Naulipass trip', url: share_url })
+      } else {
+        await navigator.clipboard.writeText(share_url)
+        alert('Trip link copied to clipboard!')
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const markRead = async (id: string) => {
+    try {
+      await notificationsApi.markRead(id)
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, status: 'sent' as const } : n)))
+    } catch { /* ignore */ }
+  }
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -34,9 +174,23 @@ export default function CommuterDashboard() {
     { id: 'book', label: 'Book Ride', icon: <Navigation className="w-4 h-4" /> },
   ]
 
+  const displayedTrips = trips.length > 0 ? trips : mockTrips.map((t) => ({
+    ...t,
+    id: t.id,
+    commuter_id: user?.id || '',
+    vehicle_id: null,
+    category: t.vehicleType,
+    status: t.status as any,
+    pickup_lat: 0,
+    pickup_lng: 0,
+    dropoff_lat: null,
+    dropoff_lng: null,
+    share_link_token: '',
+    requested_at: t.date,
+  } as TripOut))
+
   return (
     <div className="min-h-screen bg-brand-neutral flex">
-
       {/* Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 fixed h-full">
         <div className="p-5 border-b border-gray-100">
@@ -48,22 +202,20 @@ export default function CommuterDashboard() {
           </Link>
         </div>
 
-        {/* User Info */}
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-brand-orange text-white rounded-xl flex items-center justify-center font-bold text-sm">
-              {getInitials(currentUser.name)}
+              {getInitials(displayName)}
             </div>
             <div>
-              <p className="font-semibold text-brand-charcoal text-sm">{currentUser.name}</p>
-              <p className="text-gray-400 text-xs">{currentUser.id}</p>
+              <p className="font-semibold text-brand-charcoal text-sm">{displayName}</p>
+              <p className="text-gray-400 text-xs">{user?.phone_number || mockUser.phone}</p>
             </div>
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(item => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               id={`nav-${item.id}`}
@@ -76,7 +228,6 @@ export default function CommuterDashboard() {
           ))}
         </nav>
 
-        {/* Bottom links */}
         <div className="p-4 border-t border-gray-100 space-y-1">
           <Link href="/owner" className="sidebar-nav-item sidebar-nav-inactive w-full">
             <TrendingUp className="w-4 h-4" /> Owner Portal
@@ -84,37 +235,37 @@ export default function CommuterDashboard() {
           <Link href="/admin" className="sidebar-nav-item sidebar-nav-inactive w-full">
             <Settings className="w-4 h-4" /> Admin
           </Link>
-          <Link href="/" className="sidebar-nav-item sidebar-nav-inactive w-full">
-            <LogOut className="w-4 h-4" /> Back to Home
-          </Link>
+          <button onClick={logout} className="sidebar-nav-item sidebar-nav-inactive w-full text-left">
+            <LogOut className="w-4 h-4" /> Log Out
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 flex flex-col">
-        {/* Top Bar */}
         <header className="bg-white border-b border-gray-100 px-4 sm:px-6 py-4 sticky top-0 z-20">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="font-bold text-brand-charcoal text-lg">
-                {navItems.find(n => n.id === activeTab)?.label}
+                {navItems.find((n) => n.id === activeTab)?.label}
               </h1>
-              <p className="text-gray-400 text-xs">Thursday, Aug 14 · Nairobi</p>
+              <p className="text-gray-400 text-xs">{formatDate(new Date().toISOString())} · Nairobi</p>
             </div>
             <div className="flex items-center gap-3">
               <button id="notif-btn" className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors">
                 <Bell className="w-5 h-5 text-gray-500" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-orange rounded-full" />
+                {notifications.some((n) => n.status === 'queued') && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-orange rounded-full" />
+                )}
               </button>
               <div className="w-8 h-8 bg-brand-orange text-white rounded-xl flex items-center justify-center font-bold text-xs">
-                {getInitials(currentUser.name)}
+                {getInitials(displayName)}
               </div>
             </div>
           </div>
 
-          {/* Mobile Nav */}
           <div className="lg:hidden flex gap-2 mt-3 overflow-x-auto no-scrollbar">
-            {navItems.map(item => (
+            {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
@@ -129,7 +280,14 @@ export default function CommuterDashboard() {
           </div>
         </header>
 
-        {/* Page Content */}
+        {error && (
+          <div className="bg-amber-50 text-amber-700 px-6 py-3 text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            {error}
+            <button onClick={() => setError(null)} className="ml-auto font-medium hover:underline">Dismiss</button>
+          </div>
+        )}
+
         <div className="flex-1 p-4 sm:p-6 overflow-auto">
           <AnimatePresence mode="wait">
             {activeTab === 'overview' && (
@@ -140,7 +298,6 @@ export default function CommuterDashboard() {
                 exit={{ opacity: 0 }}
                 className="space-y-5"
               >
-                {/* Active Trip Banner */}
                 {activeTrip && (
                   <motion.div
                     initial={{ scale: 0.95 }}
@@ -154,35 +311,45 @@ export default function CommuterDashboard() {
                           <span className="w-2 h-2 bg-brand-orange rounded-full animate-pulse" />
                           <span className="text-brand-orange text-xs font-semibold uppercase tracking-wider">Trip In Progress</span>
                         </div>
-                        <p className="text-white font-bold text-lg">{vehicleEmojis[activeTrip.vehicleType]} {activeTrip.from} → {activeTrip.to}</p>
-                        <p className="text-white/50 text-sm mt-1">Driver: {activeTrip.driver} · {activeTrip.plate}</p>
+                        <p className="text-white font-bold text-lg">{vehicleEmojis[activeTrip.category]} On the way</p>
+                        <p className="text-white/50 text-sm mt-1">Trip #{activeTrip.id.slice(0, 8)} · {activeTrip.category}</p>
                       </div>
-                      <button id="share-trip-btn" className="flex items-center gap-1.5 bg-brand-orange text-white px-3 py-1.5 rounded-xl text-xs font-medium">
+                      <button
+                        onClick={() => handleShare(activeTrip)}
+                        className="flex items-center gap-1.5 bg-brand-orange text-white px-3 py-1.5 rounded-xl text-xs font-medium"
+                      >
                         <Share2 className="w-3.5 h-3.5" /> Share
                       </button>
                     </div>
                     <div className="mt-4 flex gap-4">
                       <div className="bg-white/5 rounded-xl px-3 py-2">
                         <p className="text-white/40 text-xs">Est. Fare</p>
-                        <p className="text-white font-bold">{formatCurrency(activeTrip.fare)}</p>
+                        <p className="text-white font-bold">
+                          {formatCurrency(activeTrip.fare_estimate?.estimated_total || 0)}
+                        </p>
                       </div>
                       <div className="bg-white/5 rounded-xl px-3 py-2">
-                        <p className="text-white/40 text-xs">Duration</p>
-                        <p className="text-white font-bold">{activeTrip.duration}</p>
+                        <p className="text-white/40 text-xs">Status</p>
+                        <p className="text-white font-bold capitalize">{activeTrip.status.replace('_', ' ')}</p>
                       </div>
                     </div>
                   </motion.div>
                 )}
 
-                {/* Stat Row */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
-                    { label: 'Wallet Balance', value: formatCurrency(currentUser.walletBalance), icon: <Wallet className="w-4 h-4 text-brand-orange" />, sub: 'Available' },
-                    { label: 'Loyalty Points', value: currentUser.loyaltyPoints.toLocaleString(), icon: <Star className="w-4 h-4 text-yellow-500" />, sub: `≈ ${formatCurrency(currentUser.loyaltyPoints / 10)}` },
-                    { label: 'Total Trips', value: currentUser.totalTrips, icon: <Navigation className="w-4 h-4 text-blue-500" />, sub: 'Completed' },
-                    { label: 'NFC Card', value: 'Active', icon: <CreditCard className="w-4 h-4 text-emerald-500" />, sub: currentUser.cardId },
+                    { label: 'Wallet Balance', value: formatCurrency(wallet?.balance || 0), icon: <Wallet className="w-4 h-4 text-brand-orange" />, sub: 'Available' },
+                    { label: 'Loyalty Points', value: totalPoints.toLocaleString(), icon: <Star className="w-4 h-4 text-yellow-500" />, sub: `≈ ${formatCurrency(totalPoints / 10)}` },
+                    { label: 'Total Trips', value: totalTrips.toString(), icon: <Navigation className="w-4 h-4 text-blue-500" />, sub: 'Completed' },
+                    { label: 'NFC Card', value: 'Active', icon: <CreditCard className="w-4 h-4 text-emerald-500" />, sub: user?.id ? 'Linked' : 'Demo' },
                   ].map((item, i) => (
-                    <motion.div key={item.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} className="stat-card">
+                    <motion.div
+                      key={item.label}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07 }}
+                      className="stat-card"
+                    >
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs text-gray-500">{item.label}</p>
                         <div className="bg-gray-50 p-1.5 rounded-lg">{item.icon}</div>
@@ -193,15 +360,14 @@ export default function CommuterDashboard() {
                   ))}
                 </div>
 
-                {/* Credit Progress */}
                 <div className="card-white p-5">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h3 className="font-semibold text-brand-charcoal">Micro-Credit Eligibility</h3>
-                      <p className="text-sm text-gray-400 mt-0.5">{currentUser.totalTrips} / 50 verified trips</p>
+                      <p className="text-sm text-gray-400 mt-0.5">{totalTrips} / 50 verified trips</p>
                     </div>
                     <span className="badge bg-orange-100 text-orange-700 text-xs px-3 py-1">
-                      {50 - currentUser.totalTrips} trips away
+                      {Math.max(0, 50 - totalTrips)} trips away
                     </span>
                   </div>
                   <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
@@ -219,7 +385,6 @@ export default function CommuterDashboard() {
                   </div>
                 </div>
 
-                {/* Recent Trips */}
                 <div className="card-white p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-brand-charcoal">Recent Trips</h3>
@@ -228,19 +393,24 @@ export default function CommuterDashboard() {
                     </button>
                   </div>
                   <div className="space-y-3">
-                    {mockTrips.filter(t => t.status !== 'active').slice(0, 3).map(trip => (
+                    {displayedTrips.slice(0, 3).map((trip) => (
                       <div key={trip.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                        <div className="text-2xl">{vehicleEmojis[trip.vehicleType]}</div>
+                        <div className="text-2xl">{vehicleEmojis[trip.category]}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-brand-charcoal text-sm truncate">{trip.from} → {trip.to}</p>
-                          <p className="text-xs text-gray-400">{formatDate(trip.date)} · {vehicleLabels[trip.vehicleType]}</p>
+                          <p className="font-medium text-brand-charcoal text-sm truncate">
+                            Trip #{trip.id.slice(0, 8)} · {vehicleLabels[trip.category]}
+                          </p>
+                          <p className="text-xs text-gray-400">{formatDateTime(trip.requested_at)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-brand-charcoal text-sm">{formatCurrency(trip.fare)}</p>
-                          <p className="text-xs text-yellow-600">+{trip.points} pts</p>
+                          <p className="font-semibold text-brand-charcoal text-sm">
+                            {formatCurrency(trip.fare_estimate?.estimated_total || 0)}
+                          </p>
+                          <span className={`text-xs ${tripStatusColor[trip.status]}`}>{trip.status.replace('_', ' ')}</span>
                         </div>
                       </div>
                     ))}
+                    {displayedTrips.length === 0 && <p className="text-sm text-gray-400">No trips yet.</p>}
                   </div>
                 </div>
               </motion.div>
@@ -251,27 +421,24 @@ export default function CommuterDashboard() {
                 <div className="card-white overflow-hidden">
                   <div className="p-5 border-b border-gray-100">
                     <h3 className="font-semibold text-brand-charcoal">All Trips</h3>
-                    <p className="text-gray-400 text-sm">{mockTrips.length} total journeys</p>
+                    <p className="text-gray-400 text-sm">{displayedTrips.length} total journeys</p>
                   </div>
                   <div className="divide-y divide-gray-100">
-                    {mockTrips.map(trip => (
+                    {displayedTrips.map((trip) => (
                       <div key={trip.id} className="flex items-center gap-4 px-5 py-4 table-row-hover">
-                        <div className="text-2xl w-10 text-center">{vehicleEmojis[trip.vehicleType]}</div>
+                        <div className="text-2xl w-10 text-center">{vehicleEmojis[trip.category]}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-brand-charcoal text-sm">{trip.from} → {trip.to}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{formatDate(trip.date)} · {trip.driver} · {trip.plate}</p>
+                          <p className="font-medium text-brand-charcoal text-sm">Trip #{trip.id.slice(0, 8)}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(trip.requested_at)} · {vehicleLabels[trip.category]}</p>
                         </div>
                         <div className="hidden sm:flex items-center gap-2">
-                          <Clock className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-sm text-gray-500">{trip.duration}</span>
+                          {trip.status === 'searching' && <Clock className="w-4 h-4 text-amber-500" />}
+                          {trip.status === 'completed' && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                          {trip.status === 'cancelled' && <XCircle className="w-4 h-4 text-red-500" />}
+                          <span className={`text-xs ${tripStatusColor[trip.status]} capitalize`}>{trip.status.replace('_', ' ')}</span>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-brand-charcoal">{formatCurrency(trip.fare)}</p>
-                          <div className="flex items-center justify-end gap-1 mt-1">
-                            {trip.status === 'completed' && <span className="badge-success">Completed</span>}
-                            {trip.status === 'active' && <span className="badge-info">Active</span>}
-                            {trip.status === 'cancelled' && <span className="badge-error">Cancelled</span>}
-                          </div>
+                          <p className="font-semibold text-brand-charcoal text-sm">{formatCurrency(trip.fare_estimate?.estimated_total || 0)}</p>
                         </div>
                       </div>
                     ))}
@@ -282,153 +449,177 @@ export default function CommuterDashboard() {
 
             {activeTab === 'wallet' && (
               <motion.div key="wallet" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
-                {/* Balance Card */}
-                <div className="bg-brand-charcoal rounded-3xl p-6 sm:p-8 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-brand-orange/10 rounded-full blur-3xl" />
-                  <p className="text-white/60 text-sm mb-1">Available Balance</p>
-                  <p className="text-white text-5xl font-black mb-2">{formatCurrency(currentUser.walletBalance)}</p>
-                  <p className="text-white/40 text-xs mb-6">{currentUser.cardId} · NFC Active</p>
-                  <div className="flex gap-3">
-                    <button id="top-up-btn" className="btn-primary flex items-center gap-2 py-2.5 text-sm">
-                      <Plus className="w-4 h-4" /> Top Up
-                    </button>
-                    <button id="send-btn" className="btn-secondary flex items-center gap-2 py-2.5 text-sm">
-                      <ArrowRight className="w-4 h-4" /> Send
-                    </button>
-                  </div>
+                <div className="card-white p-6">
+                  <p className="text-gray-500 text-sm mb-1">Available balance</p>
+                  <p className="text-4xl font-black text-brand-charcoal">{formatCurrency(wallet?.balance || 0)}</p>
+                  <p className="text-xs text-gray-400 mt-1">Currency: {wallet?.currency || 'KES'}</p>
                 </div>
 
-                {/* Payment Methods */}
-                <div className="card-white p-5">
-                  <h3 className="font-semibold text-brand-charcoal mb-4">Payment Methods</h3>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'NFC Naulipass Card', sub: currentUser.cardId, icon: '💳', active: true },
-                      { label: 'M-Pesa', sub: currentUser.phone, icon: '📱', active: true },
-                      { label: 'Visa Debit', sub: '•••• 4821', icon: '🏦', active: false },
-                    ].map(method => (
-                      <div key={method.label} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                        <span className="text-2xl">{method.icon}</span>
-                        <div className="flex-1">
-                          <p className="font-medium text-brand-charcoal text-sm">{method.label}</p>
-                          <p className="text-gray-400 text-xs">{method.sub}</p>
-                        </div>
-                        {method.active
-                          ? <span className="badge-success text-xs">Active</span>
-                          : <span className="badge text-xs bg-gray-100 text-gray-400">Inactive</span>}
+                <div className="card-white p-6">
+                  <h3 className="font-semibold text-brand-charcoal mb-4">Top Up Wallet</h3>
+                  <form onSubmit={handleTopup} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-brand-charcoal mb-1.5">Amount (KES)</label>
+                      <div className="relative">
+                        <Wallet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          type="number"
+                          min={10}
+                          value={topupAmount}
+                          onChange={(e) => setTopupAmount(e.target.value)}
+                          placeholder="500"
+                          className="input-light pl-12"
+                          required
+                        />
                       </div>
-                    ))}
+                    </div>
+
+                    {topupStatus === 'success' && (
+                      <div className="text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl text-sm">{topupMsg}</div>
+                    )}
+                    {topupStatus === 'error' && (
+                      <div className="text-red-600 bg-red-50 px-4 py-3 rounded-xl text-sm">{topupMsg}</div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={topupStatus === 'loading'}
+                      className="w-full btn-primary py-3 disabled:opacity-60"
+                    >
+                      {topupStatus === 'loading' ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
+                      ) : (
+                        <><Plus className="w-4 h-4" /> Top Up via M-Pesa</>
+                      )}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="card-white overflow-hidden">
+                  <div className="p-5 border-b border-gray-100">
+                    <h3 className="font-semibold text-brand-charcoal">Transactions</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100">
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">ID</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Method</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Amount</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {transactions.slice(0, 5).map((tx) => (
+                          <tr key={tx.id} className="table-row-hover">
+                            <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{tx.id.slice(0, 8)}</td>
+                            <td className="px-5 py-3.5 text-gray-600 text-xs capitalize">{tx.method.replace('_', ' ')}</td>
+                            <td className="px-5 py-3.5 font-bold text-brand-charcoal">{formatCurrency(tx.total_amount)}</td>
+                            <td className="px-5 py-3.5"><span className={`text-xs ${transactionStatusColor[tx.status]}`}>{tx.status}</span></td>
+                          </tr>
+                        ))}
+                        {transactions.length === 0 && (
+                          <tr><td colSpan={4} className="px-5 py-6 text-sm text-gray-400 text-center">No transactions yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </motion.div>
             )}
 
             {activeTab === 'book' && (
-              <motion.div key="book" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+              <motion.div key="book" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="card-white p-6">
-                  <h3 className="font-bold text-brand-charcoal text-xl mb-5">Book a Ride</h3>
-                  <div className="space-y-4 mb-6">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mb-1.5 block">From</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-orange" />
-                        <input className="input-light pl-10" placeholder="Current location" defaultValue="Westlands, Nairobi" />
+                  <h3 className="font-semibold text-brand-charcoal mb-5">Book a Ride</h3>
+                  <form onSubmit={handleBook} className="space-y-5">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-brand-charcoal mb-1.5">Pickup</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <select value={fromLoc} onChange={(e) => setFromLoc(e.target.value)} className="input-light pl-9">
+                            {['CBD', 'Westlands', 'Eastleigh', 'Karen', 'Kasarani', 'Rongai', 'Parklands', 'JKIA', 'Kilimani', 'Roysambu'].map((l) => (
+                              <option key={l} value={l}>{l}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-brand-charcoal mb-1.5">Drop-off</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <select value={toLoc} onChange={(e) => setToLoc(e.target.value)} className="input-light pl-9">
+                            {['Westlands', 'CBD', 'Eastleigh', 'Karen', 'Kasarani', 'Rongai', 'Parklands', 'JKIA', 'Kilimani', 'Roysambu'].map((l) => (
+                              <option key={l} value={l}>{l}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
+
                     <div>
-                      <label className="text-sm font-medium text-gray-700 mb-1.5 block">To</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input className="input-light pl-10" placeholder="Where are you going?" />
+                      <label className="block text-sm font-medium text-brand-charcoal mb-2">Ride type</label>
+                      <div className="grid grid-cols-3 gap-3">
+                        {(['matatu', 'taxi', 'boda'] as VehicleCategory[]).map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setSelectedRideType(v)}
+                            className={`p-4 rounded-xl border-2 text-center transition-all duration-200 ${
+                              selectedRideType === v
+                                ? 'border-brand-orange bg-brand-orange/5'
+                                : 'border-gray-200 hover:border-brand-orange/40'
+                            }`}
+                          >
+                            <div className="text-3xl mb-1">{vehicleEmojis[v]}</div>
+                            <div className="font-semibold text-brand-charcoal text-sm capitalize">{vehicleLabels[v]}</div>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Vehicle Selection */}
-                  <p className="text-sm font-medium text-gray-700 mb-3">Choose vehicle type</p>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    {(['matatu', 'taxi', 'boda'] as VehicleType[]).map(v => (
-                      <button
-                        key={v}
-                        id={`book-${v}`}
-                        onClick={() => { setSelectedRideType(v); setSelectedVehicle(null); }}
-                        className={`p-4 rounded-xl border-2 text-center transition-all duration-200 ${
-                          selectedRideType === v
-                            ? 'border-brand-orange bg-brand-orange/5'
-                            : 'border-gray-200 hover:border-brand-orange/40'
-                        }`}
-                      >
-                        <div className="text-3xl mb-1">{vehicleEmojis[v]}</div>
-                        <div className="font-semibold text-brand-charcoal text-sm capitalize">{vehicleLabels[v]}</div>
-                        <div className="text-brand-orange font-bold text-sm">KES {fareEstimates[v].base}</div>
-                      </button>
-                    ))}
-                  </div>
+                    {bookingStatus === 'success' && createdTrip && (
+                      <div className="text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl text-sm">
+                        Ride booked successfully! Trip #{createdTrip.id.slice(0, 8)}. Status: {createdTrip.status.replace('_', ' ')}.
+                      </div>
+                    )}
+                    {bookingStatus === 'error' && (
+                      <div className="text-red-600 bg-red-50 px-4 py-3 rounded-xl text-sm">
+                        Booking failed. Please ensure you have a wallet balance or try again.
+                      </div>
+                    )}
 
-                  {/* Available Vehicles on Route */}
-                  {mockVehicles.filter(v => v.type === selectedRideType && v.status === 'active').length > 0 && (
-                    <div className="mb-6">
-                      <p className="text-sm font-medium text-gray-700 mb-3">Available {vehicleLabels[selectedRideType]}s near you</p>
-                      <div className="space-y-3">
-                        {mockVehicles
-                          .filter(v => v.type === selectedRideType && v.status === 'active')
-                          .map(vehicle => (
-                            <button
-                              key={vehicle.id}
-                              onClick={() => setSelectedVehicle(vehicle)}
-                              className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                                selectedVehicle?.id === vehicle.id
-                                  ? 'border-brand-orange bg-brand-orange/5'
-                                  : 'border-gray-100 hover:border-gray-200 bg-white'
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg">
-                                  {vehicleEmojis[vehicle.type]}
-                                </div>
-                                <div className="text-left">
-                                  <p className="font-semibold text-brand-charcoal text-sm">{vehicle.plate}</p>
-                                  <p className="text-xs text-gray-500">{vehicle.driver} • {vehicle.capacity - vehicle.passengers} seats left</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-sm text-brand-charcoal">{vehicle.currentRoute}</p>
-                                <p className="text-xs text-brand-orange font-medium">1 min away</p>
-                              </div>
-                            </button>
-                          ))}
+                    <button
+                      type="submit"
+                      disabled={bookingStatus === 'loading'}
+                      className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                      {bookingStatus === 'loading' ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Booking...</>
+                      ) : (
+                        <><CheckCircle className="w-5 h-5" /> Confirm Booking</>
+                      )}
+                    </button>
+                  </form>
+
+                  {nearbyVehicles.length > 0 && (
+                    <div className="mt-8">
+                      <h4 className="font-medium text-brand-charcoal mb-3">Nearby vehicles</h4>
+                      <div className="space-y-2">
+                        {nearbyVehicles.map((v) => (
+                          <div key={v.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                            <span className="text-xl">{vehicleEmojis[v.category]}</span>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-brand-charcoal">{v.plate_number}</p>
+                              <p className="text-xs text-gray-400">{v.make || v.model || v.category}</p>
+                            </div>
+                            <span className={`text-xs ${vehicleStatusColor[v.status]}`}>{v.status}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
-
-                  {/* Fare Summary */}
-                  <div className="bg-gray-50 rounded-xl p-4 mb-5">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600 text-sm">Base Fare</span>
-                      <span className="font-semibold">KES {fareEstimates[selectedRideType].base}</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600 text-sm">Est. Time</span>
-                      <span className="font-semibold">{fareEstimates[selectedRideType].time}</span>
-                    </div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-gray-600 text-sm">Payment</span>
-                      <span className="font-semibold flex items-center gap-1"><CreditCard className="w-3.5 h-3.5 text-brand-orange" />NFC Card</span>
-                    </div>
-                    <div className="border-t border-gray-200 pt-2 flex justify-between items-center">
-                      <span className="font-semibold text-brand-charcoal">Loyalty Points</span>
-                      <span className="text-yellow-600 font-semibold">+{fareEstimates[selectedRideType].base * 0.2} pts</span>
-                    </div>
-                  </div>
-
-                  <button 
-                    id="confirm-booking-btn" 
-                    onClick={() => setShowPaymentOverlay(true)} 
-                    disabled={!selectedVehicle}
-                    className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <CheckCircle className="w-5 h-5" /> Confirm Booking
-                  </button>
                 </div>
               </motion.div>
             )}
@@ -436,90 +627,6 @@ export default function CommuterDashboard() {
         </div>
       </div>
     </div>
-
-      {/* Payment Overlay */}
-      <AnimatePresence>
-        {showPaymentOverlay && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/40 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm overflow-hidden bg-white/70 backdrop-blur-xl border border-white/50 shadow-2xl rounded-3xl p-6"
-            >
-              <button
-                onClick={() => setShowPaymentOverlay(false)}
-                className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-black/5 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              <div className="text-center mb-6 mt-2">
-                      <h3 className="text-xl font-bold text-brand-charcoal">Confirm Payment</h3>
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                  For Fleet No: <span className="font-semibold text-brand-charcoal">{selectedVehicle?.plate || 'Any'}</span><br />
-                  From <span className="font-semibold text-brand-charcoal">Current Location</span> to <span className="font-semibold text-brand-charcoal">Destination</span><br />
-                  Total Amount: <strong className="text-brand-orange">KES {fareEstimates[selectedRideType].base}</strong>
-                </p>
-                <p className="text-xs text-gray-400 mt-3">
-                  Enter M-Pesa phone number below to complete transaction.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="254 7XX XXX XXX"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full bg-white/50 border border-white/40 focus:bg-white focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 rounded-xl px-4 py-3 text-brand-charcoal outline-none transition-all placeholder:text-gray-400"
-                  />
-                </div>
-                <button
-                  className="w-full bg-brand-orange text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-brand-orange/25 hover:shadow-brand-orange/40 active:scale-[0.98] transition-all flex justify-center items-center gap-2"
-                  onClick={() => {
-                    if (selectedVehicle) {
-                      const newTrip: Trip = {
-                        id: `T${Date.now()}`,
-                        vehicleType: selectedVehicle.type,
-                        route: selectedVehicle.currentRoute,
-                        from: 'Current Location',
-                        to: 'Destination',
-                        fare: fareEstimates[selectedRideType].base,
-                        status: 'active',
-                        date: new Date().toISOString().split('T')[0],
-                        driver: selectedVehicle.driver,
-                        plate: selectedVehicle.plate,
-                        points: 0,
-                        paymentMethod: 'mpesa',
-                        duration: 'In progress',
-                      }
-                      
-                      const updatedTrips = localTrips.map(t => 
-                        t.status === 'active' ? { ...t, status: 'completed' as const } : t
-                      )
-                      
-                      setLocalTrips([newTrip, ...updatedTrips])
-                      setShowPaymentOverlay(false)
-                      setActiveTab('overview')
-                      setSelectedVehicle(null)
-                    }
-                  }}
-                >
-                  Pay KES {fareEstimates[selectedRideType].base}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
   )
 }
+
