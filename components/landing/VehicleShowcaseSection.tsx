@@ -109,7 +109,7 @@ export default function VehicleShowcaseSection() {
               <motion.p
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="label-sm text-zinc-500 mb-6"
+                className="label-sm text-brand-orange mb-6"
               >
                 Our fleet
               </motion.p>
@@ -118,10 +118,10 @@ export default function VehicleShowcaseSection() {
 
               {/* Dynamic heading with typing effect */}
               <div className="mt-4">
-                <h2 className="heading-lg text-white mb-4 min-h-[120px] sm:min-h-[90px]">
+                <h2 className="heading-lg text-brand-orange mb-4 min-h-[120px] sm:min-h-[90px]">
                   <TypingText key={`title-${active}`} text={slide.title} />
                 </h2>
-                <p className="text-zinc-400 text-base sm:text-lg font-light leading-relaxed mb-8 max-w-md">
+                <p className="text-brand-orange/80 text-base sm:text-lg font-light leading-relaxed mb-8 max-w-md">
                   {slide.description}
                 </p>
 

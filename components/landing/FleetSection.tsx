@@ -27,7 +27,7 @@ export default function FleetSection() {
         <motion.div {...fadeUp(0)} className="mb-14">
           <p className="label-sm text-brand-orange mb-4">Live Fleet Status</p>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <h2 className="heading-lg text-brand-orange max-w-xl">
+            <h2 className="heading-lg text-white max-w-xl">
               Real-time matatu tracking<br />across Nairobi
             </h2>
             <p className="body-lg text-zinc-500 max-w-xs sm:text-right">
