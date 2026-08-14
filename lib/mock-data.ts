@@ -48,18 +48,6 @@ export interface User {
   status: 'active' | 'suspended'
 }
 
-export interface Transaction {
-  id: string
-  userId: string
-  userName: string
-  vehicleId: string
-  amount: number
-  type: 'fare' | 'commission' | 'credit' | 'payout'
-  status: 'completed' | 'pending' | 'failed'
-  timestamp: string
-  paymentMethod: PaymentMethod
-}
-
 // ─── Commuter Data ─────────────────────────────────────────────────────────────
 
 export const mockTrips: Trip[] = [
@@ -125,35 +113,6 @@ export const earningsData = {
     { label: 'Aug', earnings: 98500, trips: 380 },
   ],
 }
-
-// ─── Admin Data ────────────────────────────────────────────────────────────────
-
-export const allUsers: User[] = [
-  { id: 'USR-8821', name: 'Amara Osei', phone: '+254 712 345 678', email: 'amara.osei@email.com', cardId: 'NP-CARD-00112', walletBalance: 2340, loyaltyPoints: 1847, totalTrips: 37, creditEligible: false, joinDate: '2024-01-15', status: 'active' },
-  { id: 'USR-4456', name: 'Fatima Al-Rashid', phone: '+254 721 987 654', email: 'fatima.r@email.com', cardId: 'NP-CARD-00089', walletBalance: 5820, loyaltyPoints: 6230, totalTrips: 72, creditEligible: true, joinDate: '2023-09-03', status: 'active' },
-  { id: 'USR-3317', name: 'David Mwangi', phone: '+254 733 112 233', email: 'david.mwangi@email.com', cardId: 'NP-CARD-00201', walletBalance: 340, loyaltyPoints: 920, totalTrips: 18, creditEligible: false, joinDate: '2024-05-22', status: 'active' },
-  { id: 'USR-7703', name: 'Sarah Otieno', phone: '+254 700 445 566', email: 'sarah.o@email.com', cardId: 'NP-CARD-00156', walletBalance: 12400, loyaltyPoints: 8900, totalTrips: 94, creditEligible: true, joinDate: '2023-06-11', status: 'active' },
-  { id: 'USR-2241', name: 'Kevin Njoroge', phone: '+254 745 778 899', email: 'kevin.n@email.com', cardId: 'NP-CARD-00344', walletBalance: 0, loyaltyPoints: 200, totalTrips: 6, creditEligible: false, joinDate: '2024-07-30', status: 'suspended' },
-  { id: 'USR-9912', name: 'Lucia Wambua', phone: '+254 710 234 567', email: 'lucia.w@email.com', cardId: 'NP-CARD-00078', walletBalance: 7800, loyaltyPoints: 11250, totalTrips: 128, creditEligible: true, joinDate: '2023-02-19', status: 'active' },
-  { id: 'USR-5581', name: 'Omar Farah', phone: '+254 728 345 678', email: 'omar.f@email.com', cardId: 'NP-CARD-00290', walletBalance: 1200, loyaltyPoints: 3400, totalTrips: 43, creditEligible: false, joinDate: '2024-03-08', status: 'active' },
-]
-
-export const allTransactions: Transaction[] = [
-  { id: 'TXN-001234', userId: 'USR-8821', userName: 'Amara Osei', vehicleId: 'V001', amount: 70, type: 'fare', status: 'completed', timestamp: '2024-08-14T08:23:11', paymentMethod: 'tap-to-pay' },
-  { id: 'TXN-001235', userId: 'USR-4456', userName: 'Fatima Al-Rashid', vehicleId: 'V003', amount: 850, type: 'fare', status: 'completed', timestamp: '2024-08-14T08:15:44', paymentMethod: 'mpesa' },
-  { id: 'TXN-001236', userId: 'USR-9912', userName: 'Lucia Wambua', vehicleId: 'V002', amount: 80, type: 'fare', status: 'completed', timestamp: '2024-08-14T07:58:22', paymentMethod: 'tap-to-pay' },
-  { id: 'TXN-001237', userId: 'USR-7703', userName: 'Sarah Otieno', vehicleId: 'V004', amount: 120, type: 'fare', status: 'completed', timestamp: '2024-08-14T07:44:09', paymentMethod: 'wallet' },
-  { id: 'TXN-001238', userId: 'USR-5581', userName: 'Omar Farah', vehicleId: 'V001', amount: 70, type: 'fare', status: 'pending', timestamp: '2024-08-14T07:30:55', paymentMethod: 'tap-to-pay' },
-  { id: 'TXN-001239', userId: 'USR-4456', userName: 'Fatima Al-Rashid', vehicleId: '-', amount: 5000, type: 'credit', status: 'completed', timestamp: '2024-08-13T18:00:00', paymentMethod: 'wallet' },
-  { id: 'TXN-001240', userId: 'USR-3317', userName: 'David Mwangi', vehicleId: 'V006', amount: 100, type: 'fare', status: 'failed', timestamp: '2024-08-13T17:45:30', paymentMethod: 'tap-to-pay' },
-  { id: 'TXN-001241', userId: 'USR-9912', userName: 'Lucia Wambua', vehicleId: '-', amount: 12000, type: 'payout', status: 'completed', timestamp: '2024-08-13T16:00:00', paymentMethod: 'mpesa' },
-]
-
-export const pendingVehicles = [
-  { id: 'REG-0051', plate: 'KDF 231R', type: 'matatu' as VehicleType, owner: 'James Kariuki', submitted: '2024-08-13', docs: 'complete' },
-  { id: 'REG-0052', plate: 'KCG 884S', type: 'taxi' as VehicleType, owner: 'Mary Ndungu', submitted: '2024-08-12', docs: 'pending' },
-  { id: 'REG-0053', plate: 'KBQ 112T', type: 'boda' as VehicleType, owner: 'John Gitau', submitted: '2024-08-12', docs: 'complete' },
-]
 
 // ─── Map pins (Nairobi area) ───────────────────────────────────────────────────
 

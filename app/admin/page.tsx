@@ -8,26 +8,41 @@ import {
 } from 'recharts'
 import {
   Users, Truck, DollarSign, Activity, Shield, Search, CheckCircle,
-  XCircle, Clock, Zap, Settings, LayoutDashboard, MapPin, CreditCard,
-  AlertTriangle, ChevronDown, LogOut, FileText, BarChart2, Plus, X, Loader2
+  Zap, LayoutDashboard, CreditCard,
+  AlertTriangle, LogOut, FileText, Plus, X, Loader2, UserPlus
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
-import { adminApi, transactionsApi, vehiclesApi } from '@/lib/api'
+import { adminApi, healthApi, transactionsApi, vehiclesApi } from '@/lib/api'
+import { vehicleEmojis, vehicleLabels } from '@/lib/mock-data'
 import {
-  allUsers, allTransactions, mockVehicles, pendingVehicles,
-  vehicleEmojis, vehicleLabels
-} from '@/lib/mock-data'
-import {
-  formatCurrency, formatDateTime, formatDate, getInitials,
+  formatCurrency, formatDateTime, getInitials,
   transactionStatusColor, vehicleStatusColor
 } from '@/lib/utils'
-import type { TransactionOut, VehicleDocumentOut, VehicleOut } from '@/lib/types'
+import type {
+  CardMappingOut, Role, TransactionOut, VehicleCategory, VehicleCreate,
+  VehicleDocumentOut, VehicleOut
+} from '@/lib/types'
 
-type Tab = 'overview' | 'users' | 'transactions' | 'vehicles' | 'telemetry'
+type Tab = 'overview' | 'fleet' | 'transactions' | 'users' | 'telemetry'
+
+const emptyVehicleForm = {
+  category: 'matatu' as VehicleCategory,
+  plate_number: '',
+  ussd_code: '',
+  make: '',
+  model: '',
+  capacity: '14',
+}
+
+const emptyInviteForm = {
+  fullName: '',
+  phone: '',
+  role: 'commuter' as Role,
+}
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth()
+  const { user, logout, requestOtp } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [searchQuery, setSearchQuery] = useState('')
   const [txFilter, setTxFilter] = useState<'all' | string>('all')
@@ -38,7 +53,9 @@ export default function AdminDashboard() {
   const [revenue, setRevenue] = useState<{ total_volume: string; transaction_count: number } | null>(null)
   const [density, setDensity] = useState<{ active_vehicles: number } | null>(null)
   const [compliance, setCompliance] = useState<Record<string, unknown>[]>([])
-  const [cards, setCards] = useState<{ id: string; card_uid: string; user_id: string | null; status: string }[]>([])
+  const [cards, setCards] = useState<CardMappingOut[]>([])
+  const [unassignedCards, setUnassignedCards] = useState<CardMappingOut[]>([])
+  const [healthy, setHealthy] = useState<boolean | null>(null)
 
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
@@ -49,104 +66,67 @@ export default function AdminDashboard() {
   const [cardInput, setCardInput] = useState('')
   const [bulkCount, setBulkCount] = useState('10')
   const [actionMsg, setActionMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [unassignedCards, setUnassignedCards] = useState<{ id: string; card_uid: string }[]>([])
   const [selectedCardId, setSelectedCardId] = useState('')
   const [assignUserId, setAssignUserId] = useState('')
 
-  const load = async (key: string, fn: () => Promise<void>) => {
-    setLoading((p) => ({ ...p, [key]: true }))
-    try { await fn() } catch (err) { console.error(err) }
-    setLoading((p) => ({ ...p, [key]: false }))
+  const [showAddVehicle, setShowAddVehicle] = useState(false)
+  const [vehicleForm, setVehicleForm] = useState(emptyVehicleForm)
+  const [assignDriverVehicle, setAssignDriverVehicle] = useState<VehicleOut | null>(null)
+  const [driverIdInput, setDriverIdInput] = useState('')
+
+  const [inviteForm, setInviteForm] = useState(emptyInviteForm)
+  const [inviteLoading, setInviteLoading] = useState(false)
+
+  const fetchAll = async () => {
+    setError(null)
+    try {
+      const [v, tx, rev, den, comp, active, unassigned] = await Promise.all([
+        vehiclesApi.list(),
+        transactionsApi.list(),
+        adminApi.revenue(),
+        adminApi.fleetDensity(),
+        adminApi.fleetCompliance(),
+        adminApi.listCards('active'),
+        adminApi.listCards('unassigned'),
+      ])
+      setVehicles(v)
+      setTransactions(tx)
+      setRevenue(rev)
+      setDensity(den)
+      setCompliance(comp)
+      setCards(active)
+      setUnassignedCards(unassigned)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Live admin data could not be loaded.')
+    }
   }
 
   useEffect(() => {
-    load('initial', async () => {
-      try {
-        const [v, tx, rev, den, comp, c, unassigned] = await Promise.all([
-          vehiclesApi.list(),
-          transactionsApi.list(),
-          adminApi.revenue(),
-          adminApi.fleetDensity(),
-          adminApi.fleetCompliance(),
-          adminApi.listCards('active'),
-          adminApi.listCards('unassigned'),
-        ])
-        setVehicles(v)
-        setTransactions(tx)
-        setRevenue(rev)
-        setDensity(den)
-        setCompliance(comp)
-        setCards(c)
-        setUnassignedCards(unassigned)
-      } catch (err) {
-        setError('Live admin data could not be loaded. Showing demo data.')
-      }
-    })
+    setLoading((p) => ({ ...p, initial: true }))
+    fetchAll().finally(() => setLoading((p) => ({ ...p, initial: false })))
+    healthApi.check().then(() => setHealthy(true)).catch(() => setHealthy(false))
   }, [])
 
-  const fleet = vehicles.length > 0 ? vehicles : mockVehicles.map((v) => ({
-    id: v.id,
-    owner_id: '',
-    category: v.type,
-    plate_number: v.plate,
-    ussd_code: '',
-    make: null,
-    model: null,
-    capacity: v.capacity,
-    status: v.status,
-    route_id: null,
-    created_at: '',
-  } as VehicleOut))
+  const filteredTx = txFilter === 'all' ? transactions : transactions.filter((tx) => tx.method === txFilter || tx.status === txFilter)
 
-  const txList = transactions.length > 0 ? transactions : allTransactions.map((t) => ({
-    id: t.id,
-    trip_id: null,
-    vehicle_id: t.vehicleId,
-    route_id: null,
-    payer_id: t.userId,
-    owner_id: null,
-    method: t.paymentMethod === 'tap-to-pay' ? 'tap_card' : t.paymentMethod,
-    base_fare: String(t.amount),
-    dynamic_charges: '0',
-    tip_amount: '0',
-    total_amount: String(t.amount),
-    status: t.status === 'completed' ? 'success' : t.status,
-    failure_reason: null,
-    provider_reference: '',
-    created_at: t.timestamp,
-    settled_at: null,
-  } as TransactionOut))
-
-  const filteredUsers = allUsers.filter((u) =>
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.cardId.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const filteredTx = txFilter === 'all' ? txList : txList.filter((tx) => tx.method === txFilter || tx.status === txFilter)
+  const allCards = useMemo(() => [...cards, ...unassignedCards], [cards, unassignedCards])
+  const filteredCards = useMemo(() => {
+    if (!searchQuery.trim()) return allCards
+    const q = searchQuery.toLowerCase()
+    return allCards.filter((c) => c.card_uid.toLowerCase().includes(q) || (c.user_id || '').toLowerCase().includes(q))
+  }, [allCards, searchQuery])
 
   const systemMetrics = useMemo(() => {
     const map = new Map<string, { transactions: number; revenue: number }>()
-    txList.filter((t) => t.status === 'success').forEach((t) => {
+    transactions.filter((t) => t.status === 'success').forEach((t) => {
       const day = new Date(t.created_at).toLocaleDateString('en-KE', { weekday: 'short' })
       const cur = map.get(day) || { transactions: 0, revenue: 0 }
       cur.transactions += 1
       cur.revenue += parseFloat(t.total_amount)
       map.set(day, cur)
     })
-    if (map.size > 0) {
-      return Array.from(map.entries()).map(([day, vals]) => ({ day, ...vals }))
-    }
-    return [
-      { day: 'Mon', transactions: 342, revenue: 28400 },
-      { day: 'Tue', transactions: 418, revenue: 34100 },
-      { day: 'Wed', transactions: 385, revenue: 31800 },
-      { day: 'Thu', transactions: 512, revenue: 42000 },
-      { day: 'Fri', transactions: 678, revenue: 55200 },
-      { day: 'Sat', transactions: 740, revenue: 61000 },
-      { day: 'Sun', transactions: 498, revenue: 41500 },
-    ]
-  }, [txList])
+    return Array.from(map.entries()).map(([day, vals]) => ({ day, ...vals }))
+  }, [transactions])
 
   const handleRefund = async (tx: TransactionOut) => {
     setActionMsg(null)
@@ -183,13 +163,64 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleAddVehicle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setActionMsg(null)
+    try {
+      const body: VehicleCreate = {
+        category: vehicleForm.category,
+        plate_number: vehicleForm.plate_number.trim(),
+        ussd_code: vehicleForm.ussd_code.trim(),
+        make: vehicleForm.make.trim() || null,
+        model: vehicleForm.model.trim() || null,
+        capacity: parseInt(vehicleForm.capacity) || 14,
+      }
+      const created = await vehiclesApi.create(body)
+      setVehicles((prev) => [created, ...prev])
+      setShowAddVehicle(false)
+      setVehicleForm(emptyVehicleForm)
+      setActionMsg({ type: 'success', text: `Vehicle ${created.plate_number} registered.` })
+    } catch (err) {
+      setActionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Vehicle registration failed' })
+    }
+  }
+
+  const handleAssignDriver = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!assignDriverVehicle || !driverIdInput.trim()) return
+    setActionMsg(null)
+    try {
+      await vehiclesApi.assignDriver(assignDriverVehicle.id, { driver_id: driverIdInput.trim() })
+      setActionMsg({ type: 'success', text: `Driver assigned to ${assignDriverVehicle.plate_number}.` })
+      setAssignDriverVehicle(null)
+      setDriverIdInput('')
+    } catch (err) {
+      setActionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Driver assignment failed' })
+    }
+  }
+
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setActionMsg(null)
+    setInviteLoading(true)
+    try {
+      await requestOtp(inviteForm.phone, inviteForm.fullName || undefined, inviteForm.role)
+      setActionMsg({ type: 'success', text: `Invite sent to ${inviteForm.phone}. They'll verify the OTP to activate their ${inviteForm.role} account.` })
+      setInviteForm(emptyInviteForm)
+    } catch (err) {
+      setActionMsg({ type: 'error', text: err instanceof Error ? err.message : 'Invite failed' })
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
   const handleRegisterCards = async (e: React.FormEvent) => {
     e.preventDefault()
     setActionMsg(null)
     try {
       const uids = cardInput.split(/[,\n]+/).map((s) => s.trim()).filter(Boolean)
       const res = await adminApi.registerCards({ card_uids: uids })
-      setCards((prev) => [...prev, ...res])
+      setUnassignedCards((prev) => [...prev, ...res])
       setCardInput('')
       setActionMsg({ type: 'success', text: `${uids.length} card(s) registered.` })
     } catch (err) {
@@ -202,7 +233,7 @@ export default function AdminDashboard() {
     try {
       const res = await adminApi.bulkIssueCards(parseInt(bulkCount) || 10)
       setCardInput(res.join('\n'))
-      setActionMsg({ type: 'success', text: `${res.length} demo card UIDs issued.` })
+      setActionMsg({ type: 'success', text: `${res.length} QA card UIDs issued.` })
       const unassigned = await adminApi.listCards('unassigned')
       setUnassignedCards(unassigned)
     } catch (err) {
@@ -232,9 +263,9 @@ export default function AdminDashboard() {
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'users', label: 'User Ledger', icon: <Users className="w-4 h-4" /> },
+    { id: 'fleet', label: 'Fleet', icon: <Truck className="w-4 h-4" /> },
     { id: 'transactions', label: 'Transactions', icon: <DollarSign className="w-4 h-4" /> },
-    { id: 'vehicles', label: 'Fleet Approval', icon: <Truck className="w-4 h-4" /> },
+    { id: 'users', label: 'Users & Cards', icon: <CreditCard className="w-4 h-4" /> },
     { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4" /> },
   ]
 
@@ -302,10 +333,12 @@ export default function AdminDashboard() {
               <p className="text-gray-400 text-xs">System-wide monitoring & management</p>
             </div>
             <div className="flex items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full font-medium">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                All systems operational
-              </div>
+              {healthy !== null && (
+                <div className={`hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium ${healthy ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${healthy ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                  {healthy ? 'All systems operational' : 'API unreachable'}
+                </div>
+              )}
               <div className="w-8 h-8 bg-purple-600 text-white rounded-xl flex items-center justify-center font-bold text-xs">
                 {getInitials(user?.full_name || user?.phone_number || 'Admin')}
               </div>
@@ -332,6 +365,7 @@ export default function AdminDashboard() {
           <div className="bg-amber-50 text-amber-700 px-6 py-3 text-sm flex items-center gap-2">
             <AlertTriangle className="w-4 h-4" />
             {error}
+            <button onClick={fetchAll} className="ml-2 font-medium hover:underline">Retry</button>
             <button onClick={() => setError(null)} className="ml-auto font-medium hover:underline">Dismiss</button>
           </div>
         )}
@@ -345,14 +379,20 @@ export default function AdminDashboard() {
         )}
 
         <div className="flex-1 p-4 sm:p-6 overflow-auto">
+          {loading.initial ? (
+            <div className="flex items-center justify-center py-24 text-gray-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Loading live data...
+            </div>
+          ) : (
           <AnimatePresence mode="wait">
             {activeTab === 'overview' && (
               <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total Users', value: allUsers.length.toLocaleString(), sub: `${filteredUsers.length} matched`, icon: <Users className="w-5 h-5" />, color: 'bg-blue-500/10 text-blue-600' },
-                    { label: 'Active Vehicles', value: `${density?.active_vehicles || fleet.filter((v) => v.status === 'active').length}`, sub: `${fleet.length} registered total`, icon: <Truck className="w-5 h-5" />, color: 'bg-emerald-500/10 text-emerald-600' },
-                    { label: 'Total Volume', value: formatCurrency(revenue?.total_volume || 0), sub: `${revenue?.transaction_count || txList.length} transactions`, icon: <DollarSign className="w-5 h-5" />, color: 'bg-brand-orange/10 text-brand-orange' },
+                    { label: 'Active Vehicles', value: `${density?.active_vehicles ?? vehicles.filter((v) => v.status === 'active').length}`, sub: `${vehicles.length} registered total`, icon: <Truck className="w-5 h-5" />, color: 'bg-emerald-500/10 text-emerald-600' },
+                    { label: 'Total Volume', value: formatCurrency(revenue?.total_volume || 0), sub: `${revenue?.transaction_count ?? transactions.length} transactions`, icon: <DollarSign className="w-5 h-5" />, color: 'bg-brand-orange/10 text-brand-orange' },
+                    { label: 'Active Cards', value: `${cards.length}`, sub: `${unassignedCards.length} unassigned`, icon: <CreditCard className="w-5 h-5" />, color: 'bg-blue-500/10 text-blue-600' },
                     { label: 'Pending Docs', value: `${compliance.length}`, sub: 'Need verification', icon: <Activity className="w-5 h-5" />, color: 'bg-purple-500/10 text-purple-600' },
                   ].map((kpi, i) => (
                     <motion.div key={kpi.label} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} className="stat-card">
@@ -372,21 +412,25 @@ export default function AdminDashboard() {
                       <h3 className="font-semibold text-brand-charcoal">Daily Transactions</h3>
                       <span className="text-xs text-gray-400">Live</span>
                     </div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <AreaChart data={systemMetrics}>
-                        <defs>
-                          <linearGradient id="txGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#FF6B00" stopOpacity={0.2} />
-                            <stop offset="100%" stopColor="#FF6B00" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                        <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="transactions" stroke="#FF6B00" strokeWidth={2.5} fill="url(#txGrad)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {systemMetrics.length === 0 ? (
+                      <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">No transaction data yet.</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <AreaChart data={systemMetrics}>
+                          <defs>
+                            <linearGradient id="txGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#FF6B00" stopOpacity={0.2} />
+                              <stop offset="100%" stopColor="#FF6B00" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                          <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                          <Area type="monotone" dataKey="transactions" stroke="#FF6B00" strokeWidth={2.5} fill="url(#txGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
 
                   <div className="card-white p-5">
@@ -394,61 +438,19 @@ export default function AdminDashboard() {
                       <h3 className="font-semibold text-brand-charcoal">Revenue (KES)</h3>
                       <span className="badge-success text-xs">Live</span>
                     </div>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={systemMetrics}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                        <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                        <Tooltip formatter={(v: number) => [formatCurrency(v), 'Revenue']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                        <Bar dataKey="revenue" fill="#1A1D20" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="card-white p-5">
-                  <h3 className="font-semibold text-brand-charcoal mb-3">Tap Cards</h3>
-                  <div className="grid lg:grid-cols-3 gap-5">
-                    <form onSubmit={handleRegisterCards} className="space-y-3">
-                      <label className="block text-sm font-medium text-brand-charcoal">Register Card UIDs</label>
-                      <textarea
-                        value={cardInput}
-                        onChange={(e) => setCardInput(e.target.value)}
-                        placeholder="Paste card UIDs separated by commas or new lines"
-                        className="input-light min-h-[100px]"
-                      />
-                      <button type="submit" className="btn-primary text-sm py-2 px-4">Register Cards</button>
-                    </form>
-                    <div className="space-y-3">
-                      <label className="block text-sm font-medium text-brand-charcoal">Bulk Issue Demo Cards</label>
-                      <div className="flex gap-2">
-                        <input type="number" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} className="input-light w-24" />
-                        <button onClick={handleBulkIssue} className="btn-primary text-sm py-2 px-4">Issue</button>
-                      </div>
-                      <p className="text-xs text-gray-400">{cards.length} active · {unassignedCards.length} unassigned</p>
-                    </div>
-                    <form onSubmit={handleAssignCard} className="space-y-3">
-                      <label className="block text-sm font-medium text-brand-charcoal">Assign Unassigned Card</label>
-                      <select
-                        value={selectedCardId}
-                        onChange={(e) => setSelectedCardId(e.target.value)}
-                        className="input-light"
-                      >
-                        <option value="">Select empty card</option>
-                        {unassignedCards.map((c) => (
-                          <option key={c.id} value={c.id}>{c.card_uid}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={assignUserId}
-                        onChange={(e) => setAssignUserId(e.target.value)}
-                        placeholder="User ID"
-                        className="input-light"
-                        required
-                      />
-                      <button type="submit" className="btn-primary text-sm py-2 px-4 w-full">Assign to User</button>
-                    </form>
+                    {systemMetrics.length === 0 ? (
+                      <div className="h-[200px] flex items-center justify-center text-sm text-gray-400">No revenue data yet.</div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={systemMetrics}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v / 1000}k`} />
+                          <Tooltip formatter={(v: number) => [formatCurrency(v), 'Revenue']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                          <Bar dataKey="revenue" fill="#1A1D20" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
                   </div>
                 </div>
 
@@ -465,7 +467,7 @@ export default function AdminDashboard() {
                       <>
                         <div className="flex items-center gap-3 p-3 rounded-xl text-sm bg-amber-50 text-amber-700">
                           <Truck className="w-4 h-4" />
-                          <span>{fleet.filter((v) => v.status === 'pending').length} vehicles pending registration approval</span>
+                          <span>{vehicles.filter((v) => v.status === 'pending').length} vehicles pending registration approval</span>
                         </div>
                         <div className="flex items-center gap-3 p-3 rounded-xl text-sm bg-emerald-50 text-emerald-700">
                           <CheckCircle className="w-4 h-4" />
@@ -478,71 +480,90 @@ export default function AdminDashboard() {
               </motion.div>
             )}
 
-            {activeTab === 'users' && (
-              <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            {activeTab === 'fleet' && (
+              <motion.div key="fleet" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-bold text-brand-charcoal text-lg">Fleet</h2>
+                    <p className="text-gray-400 text-sm">Register vehicles and manage driver assignments</p>
+                  </div>
+                  <button onClick={() => setShowAddVehicle(true)} className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
+                    <Plus className="w-4 h-4" /> Add Vehicle
+                  </button>
+                </div>
+
+                <div className="card-white overflow-hidden">
+                  <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-brand-charcoal">Pending Approval</h3>
+                      <p className="text-gray-400 text-sm">{vehicles.filter((v) => v.status === 'pending').length} vehicles awaiting verification</p>
+                    </div>
+                    <span className="badge-warning text-xs">{vehicles.filter((v) => v.status === 'pending').length} pending</span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {vehicles.filter((v) => v.status === 'pending').map((v) => (
+                      <div key={v.id} className="flex items-center gap-4 px-5 py-4 table-row-hover">
+                        <span className="text-2xl">{vehicleEmojis[v.category]}</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-brand-charcoal">{v.plate_number}</p>
+                          <p className="text-gray-400 text-xs">{v.make || v.model || 'Submitted recently'}</p>
+                        </div>
+                        <span className="capitalize text-xs font-medium text-gray-500">{vehicleLabels[v.category]}</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => openVehicleDocs(v)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {vehicles.filter((v) => v.status === 'pending').length === 0 && (
+                      <p className="px-5 py-6 text-sm text-gray-400">No pending vehicles.</p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="card-white overflow-hidden">
                   <div className="p-5 border-b border-gray-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div>
-                        <h3 className="font-semibold text-brand-charcoal">User & Card Ledger</h3>
-                        <p className="text-gray-400 text-sm">{allUsers.length} registered users (demo ledger)</p>
-                      </div>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                          id="user-search"
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search by name, ID, card..."
-                          className="input-light pl-9 w-64 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
+                    <h3 className="font-semibold text-brand-charcoal">All Registered Vehicles</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-100">
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">User</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">ID</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Card ID</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Trips</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Points</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Credit</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehicle</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Plate</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Capacity</th>
                           <th className="text-left px-5 py-3 text-gray-500 font-medium">Status</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Docs</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Driver</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {filteredUsers.map((u) => (
-                          <tr key={u.id} className="table-row-hover">
+                        {vehicles.map((v) => (
+                          <tr key={v.id} className="table-row-hover">
                             <td className="px-5 py-3.5">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 bg-brand-orange/10 text-brand-orange rounded-lg flex items-center justify-center text-xs font-bold">
-                                  {getInitials(u.name)}
-                                </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">{vehicleEmojis[v.category]}</span>
                                 <div>
-                                  <p className="font-medium text-brand-charcoal">{u.name}</p>
-                                  <p className="text-gray-400 text-xs">{u.phone}</p>
+                                  <p className="font-semibold text-brand-charcoal">{vehicleLabels[v.category]}</p>
+                                  <p className="text-gray-400 text-xs">{v.make || v.model || '-'}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{u.id}</td>
-                            <td className="px-5 py-3.5 font-mono text-xs text-blue-600">{u.cardId}</td>
-                            <td className="px-5 py-3.5 font-semibold">{u.totalTrips}</td>
-                            <td className="px-5 py-3.5 text-yellow-600 font-medium">{u.loyaltyPoints.toLocaleString()}</td>
+                            <td className="px-5 py-3.5 text-gray-700">{v.plate_number}</td>
+                            <td className="px-5 py-3.5 text-gray-600">{v.capacity}</td>
+                            <td className="px-5 py-3.5"><span className={`text-xs ${vehicleStatusColor[v.status]}`}>{v.status}</span></td>
                             <td className="px-5 py-3.5">
-                              {u.creditEligible
-                                ? <span className="badge-success text-xs">Eligible</span>
-                                : <span className="badge text-xs bg-gray-100 text-gray-400">Locked</span>}
+                              <button onClick={() => openVehicleDocs(v)} className="text-xs text-brand-orange font-medium hover:underline">View</button>
                             </td>
                             <td className="px-5 py-3.5">
-                              {u.status === 'active'
-                                ? <span className="badge-success text-xs">Active</span>
-                                : <span className="badge-error text-xs">Suspended</span>}
+                              <button onClick={() => { setAssignDriverVehicle(v); setDriverIdInput('') }} className="text-xs text-brand-orange font-medium hover:underline">Assign</button>
                             </td>
                           </tr>
                         ))}
+                        {vehicles.length === 0 && (
+                          <tr><td colSpan={6} className="px-5 py-6 text-sm text-gray-400 text-center">No vehicles registered yet. Click &ldquo;Add Vehicle&rdquo; to register the first one.</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -614,73 +635,149 @@ export default function AdminDashboard() {
               </motion.div>
             )}
 
-            {activeTab === 'vehicles' && (
-              <motion.div key="vehicles" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
-                <div className="card-white overflow-hidden">
-                  <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-brand-charcoal">Pending Approval</h3>
-                      <p className="text-gray-400 text-sm">{fleet.filter((v) => v.status === 'pending').length} vehicles awaiting verification</p>
-                    </div>
-                    <span className="badge-warning text-xs">{fleet.filter((v) => v.status === 'pending').length} pending</span>
+            {activeTab === 'users' && (
+              <motion.div key="users" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+                <div className="card-white p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <UserPlus className="w-5 h-5 text-brand-orange" />
+                    <h3 className="font-semibold text-brand-charcoal">Invite User</h3>
                   </div>
-                  <div className="divide-y divide-gray-100">
-                    {fleet.filter((v) => v.status === 'pending').map((v) => (
-                      <div key={v.id} className="flex items-center gap-4 px-5 py-4 table-row-hover">
-                        <span className="text-2xl">{vehicleEmojis[v.category]}</span>
-                        <div className="flex-1">
-                          <p className="font-semibold text-brand-charcoal">{v.plate_number}</p>
-                          <p className="text-gray-400 text-xs">{v.make || v.model || 'Submitted recently'}</p>
-                        </div>
-                        <span className="capitalize text-xs font-medium text-gray-500">{vehicleLabels[v.category]}</span>
-                        <div className="flex gap-2">
-                          <button onClick={() => openVehicleDocs(v)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors">
-                            <FileText className="w-4 h-4" />
-                          </button>
-                        </div>
+                  <form onSubmit={handleInviteUser} className="grid sm:grid-cols-4 gap-3 items-end">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        value={inviteForm.fullName}
+                        onChange={(e) => setInviteForm((f) => ({ ...f, fullName: e.target.value }))}
+                        className="input-light"
+                        placeholder="Jane Wanjiru"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={inviteForm.phone}
+                        onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value }))}
+                        className="input-light"
+                        placeholder="0712 345 678"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Role</label>
+                      <select
+                        value={inviteForm.role}
+                        onChange={(e) => setInviteForm((f) => ({ ...f, role: e.target.value as Role }))}
+                        className="input-light"
+                      >
+                        <option value="commuter">Commuter</option>
+                        <option value="owner">Owner</option>
+                        <option value="driver">Driver</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <button type="submit" disabled={inviteLoading} className="btn-primary text-sm py-2 px-4 disabled:opacity-60">
+                      {inviteLoading ? 'Sending...' : 'Send Invite'}
+                    </button>
+                  </form>
+                  <p className="text-xs text-gray-400 mt-3">Creates the account and sends an OTP to the phone number. The user verifies it themselves to activate.</p>
+                </div>
+
+                <div className="card-white p-5">
+                  <h3 className="font-semibold text-brand-charcoal mb-3">Tap Cards</h3>
+                  <div className="grid lg:grid-cols-3 gap-5">
+                    <form onSubmit={handleRegisterCards} className="space-y-3">
+                      <label className="block text-sm font-medium text-brand-charcoal">Register Card UIDs</label>
+                      <textarea
+                        value={cardInput}
+                        onChange={(e) => setCardInput(e.target.value)}
+                        placeholder="Paste real card UIDs separated by commas or new lines"
+                        className="input-light min-h-[100px]"
+                      />
+                      <button type="submit" className="btn-primary text-sm py-2 px-4">Register Cards</button>
+                    </form>
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-brand-charcoal">Bulk Issue QA Cards</label>
+                      <div className="flex gap-2">
+                        <input type="number" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} className="input-light w-24" />
+                        <button onClick={handleBulkIssue} className="btn-primary text-sm py-2 px-4">Issue</button>
                       </div>
-                    ))}
-                    {fleet.filter((v) => v.status === 'pending').length === 0 && (
-                      <p className="px-5 py-6 text-sm text-gray-400">No pending vehicles.</p>
-                    )}
+                      <p className="text-xs text-gray-400">Placeholder UIDs for QA only &mdash; not real hardware cards. {cards.length} active &middot; {unassignedCards.length} unassigned</p>
+                    </div>
+                    <form onSubmit={handleAssignCard} className="space-y-3">
+                      <label className="block text-sm font-medium text-brand-charcoal">Assign Unassigned Card</label>
+                      <select
+                        value={selectedCardId}
+                        onChange={(e) => setSelectedCardId(e.target.value)}
+                        className="input-light"
+                      >
+                        <option value="">Select empty card</option>
+                        {unassignedCards.map((c) => (
+                          <option key={c.id} value={c.id}>{c.card_uid}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={assignUserId}
+                        onChange={(e) => setAssignUserId(e.target.value)}
+                        placeholder="User ID"
+                        className="input-light"
+                        required
+                      />
+                      <button type="submit" className="btn-primary text-sm py-2 px-4 w-full">Assign to User</button>
+                    </form>
                   </div>
                 </div>
 
                 <div className="card-white overflow-hidden">
                   <div className="p-5 border-b border-gray-100">
-                    <h3 className="font-semibold text-brand-charcoal">All Registered Vehicles</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-brand-charcoal">Card Ledger</h3>
+                        <p className="text-gray-400 text-sm">{allCards.length} cards on record</p>
+                      </div>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          id="card-search"
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search by card UID or user ID..."
+                          className="input-light pl-9 w-64 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-gray-50 border-b border-gray-100">
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Vehicle</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Plate</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Capacity</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Card UID</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">User ID</th>
                           <th className="text-left px-5 py-3 text-gray-500 font-medium">Status</th>
-                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Docs</th>
+                          <th className="text-left px-5 py-3 text-gray-500 font-medium">Activated</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {fleet.map((v) => (
-                          <tr key={v.id} className="table-row-hover">
+                        {filteredCards.map((c) => (
+                          <tr key={c.id} className="table-row-hover">
+                            <td className="px-5 py-3.5 font-mono text-xs text-blue-600">{c.card_uid}</td>
+                            <td className="px-5 py-3.5 font-mono text-xs text-gray-500">{c.user_id || '-'}</td>
                             <td className="px-5 py-3.5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">{vehicleEmojis[v.category]}</span>
-                                <div>
-                                  <p className="font-semibold text-brand-charcoal">{vehicleLabels[v.category]}</p>
-                                  <p className="text-gray-400 text-xs">{v.make || v.model || '-'}</p>
-                                </div>
-                              </div>
+                              {c.status === 'active'
+                                ? <span className="badge-success text-xs">Active</span>
+                                : c.status === 'unassigned'
+                                ? <span className="badge text-xs bg-gray-100 text-gray-500">Unassigned</span>
+                                : <span className="badge-error text-xs">{c.status}</span>}
                             </td>
-                            <td className="px-5 py-3.5 text-gray-700">{v.plate_number}</td>
-                            <td className="px-5 py-3.5 text-gray-600">{v.capacity}</td>
-                            <td className="px-5 py-3.5"><span className={`text-xs ${vehicleStatusColor[v.status]}`}>{v.status}</span></td>
-                            <td className="px-5 py-3.5">
-                              <button onClick={() => openVehicleDocs(v)} className="text-xs text-brand-orange font-medium hover:underline">View</button>
-                            </td>
+                            <td className="px-5 py-3.5 text-gray-400 text-xs">{c.activated_at ? formatDateTime(c.activated_at) : '-'}</td>
                           </tr>
                         ))}
+                        {filteredCards.length === 0 && (
+                          <tr><td colSpan={4} className="px-5 py-6 text-sm text-gray-400 text-center">No cards on record yet.</td></tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -724,7 +821,11 @@ export default function AdminDashboard() {
                       </svg>
                     </div>
 
-                    {fleet.map((v, i) => {
+                    {vehicles.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center text-white/40 text-sm">No vehicles to display.</div>
+                    )}
+
+                    {vehicles.map((v, i) => {
                       const positions = [
                         { top: '45%', left: '55%' },
                         { top: '35%', left: '25%' },
@@ -733,7 +834,7 @@ export default function AdminDashboard() {
                         { top: '60%', left: '35%' },
                         { top: '22%', left: '68%' },
                       ]
-                      const pos = positions[i] || { top: '50%', left: '50%' }
+                      const pos = positions[i % positions.length]
                       const colors: Record<string, string> = { active: '#4ade80', inactive: '#f59e0b', suspended: '#ef4444', pending: '#6b7280' }
                       return (
                         <motion.div
@@ -776,34 +877,144 @@ export default function AdminDashboard() {
 
                     <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl px-3 py-2">
                       <div className="text-white text-xs">
-                        <span className="text-brand-orange font-bold text-lg">{fleet.length}</span>
+                        <span className="text-brand-orange font-bold text-lg">{vehicles.length}</span>
                         <span className="ml-1 text-white/60">total tracked</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-4">
-                  {[
-                    { label: 'System Uptime', value: '99.97%', sub: 'Last 30 days', icon: <Activity className="w-5 h-5 text-emerald-500" /> },
-                    { label: 'API Latency', value: '42ms', sub: 'Average response', icon: <Zap className="w-5 h-5 text-brand-orange" /> },
-                    { label: 'Fraud Detected', value: '0', sub: 'This month', icon: <Shield className="w-5 h-5 text-blue-500" /> },
-                  ].map((s) => (
-                    <div key={s.label} className="stat-card flex items-center gap-4">
-                      <div className="bg-gray-50 p-3 rounded-xl">{s.icon}</div>
-                      <div>
-                        <p className="text-xs text-gray-500">{s.label}</p>
-                        <p className="text-2xl font-bold text-brand-charcoal">{s.value}</p>
-                        <p className="text-xs text-gray-400">{s.sub}</p>
-                      </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="stat-card flex items-center gap-4">
+                    <div className="bg-gray-50 p-3 rounded-xl"><Activity className="w-5 h-5 text-emerald-500" /></div>
+                    <div>
+                      <p className="text-xs text-gray-500">API Status</p>
+                      <p className="text-2xl font-bold text-brand-charcoal">{healthy === null ? 'Checking...' : healthy ? 'Healthy' : 'Unreachable'}</p>
+                      <p className="text-xs text-gray-400">/health endpoint</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="stat-card flex items-center gap-4">
+                    <div className="bg-gray-50 p-3 rounded-xl"><Shield className="w-5 h-5 text-blue-500" /></div>
+                    <div>
+                      <p className="text-xs text-gray-500">Vehicles Pending Docs</p>
+                      <p className="text-2xl font-bold text-brand-charcoal">{compliance.length}</p>
+                      <p className="text-xs text-gray-400">From fleet compliance</p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+          )}
         </div>
       </div>
+
+      {/* Add Vehicle Modal */}
+      {showAddVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-brand-charcoal text-lg">Add Vehicle</h3>
+              <button onClick={() => setShowAddVehicle(false)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <form onSubmit={handleAddVehicle} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Category</label>
+                <select
+                  value={vehicleForm.category}
+                  onChange={(e) => setVehicleForm((f) => ({ ...f, category: e.target.value as VehicleCategory }))}
+                  className="input-light"
+                >
+                  <option value="matatu">Matatu</option>
+                  <option value="taxi">Taxi</option>
+                  <option value="boda">Boda</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Plate Number</label>
+                <input
+                  type="text"
+                  value={vehicleForm.plate_number}
+                  onChange={(e) => setVehicleForm((f) => ({ ...f, plate_number: e.target.value }))}
+                  className="input-light"
+                  placeholder="KDF 231R"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">USSD Code</label>
+                <input
+                  type="text"
+                  value={vehicleForm.ussd_code}
+                  onChange={(e) => setVehicleForm((f) => ({ ...f, ussd_code: e.target.value }))}
+                  className="input-light"
+                  placeholder="e.g. *483*12#"
+                  minLength={2}
+                  maxLength={10}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Make</label>
+                  <input
+                    type="text"
+                    value={vehicleForm.make}
+                    onChange={(e) => setVehicleForm((f) => ({ ...f, make: e.target.value }))}
+                    className="input-light"
+                    placeholder="Toyota"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Model</label>
+                  <input
+                    type="text"
+                    value={vehicleForm.model}
+                    onChange={(e) => setVehicleForm((f) => ({ ...f, model: e.target.value }))}
+                    className="input-light"
+                    placeholder="Hiace"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Capacity</label>
+                <input
+                  type="number"
+                  value={vehicleForm.capacity}
+                  onChange={(e) => setVehicleForm((f) => ({ ...f, capacity: e.target.value }))}
+                  className="input-light"
+                  min={1}
+                />
+              </div>
+              <button type="submit" className="btn-primary text-sm py-2.5 w-full">Register Vehicle</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Driver Modal */}
+      {assignDriverVehicle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-brand-charcoal text-lg">Assign Driver</h3>
+              <button onClick={() => setAssignDriverVehicle(null)}><X className="w-5 h-5 text-gray-400" /></button>
+            </div>
+            <p className="text-sm text-gray-400 mb-3">Vehicle: {assignDriverVehicle.plate_number}</p>
+            <form onSubmit={handleAssignDriver} className="space-y-3">
+              <input
+                type="text"
+                value={driverIdInput}
+                onChange={(e) => setDriverIdInput(e.target.value)}
+                className="input-light"
+                placeholder="Driver user ID"
+                required
+              />
+              <button type="submit" className="btn-primary text-sm py-2.5 w-full">Assign</button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Vehicle Documents Modal */}
       {selectedVehicle && (
