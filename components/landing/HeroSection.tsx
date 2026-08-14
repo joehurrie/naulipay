@@ -85,8 +85,8 @@ export default function HeroSection() {
             {...fadeUp(0.3)}
             className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14"
           >
-            <a href="#ride-finder" className="btn-primary px-9 py-3.5 text-sm font-medium">
-              Find a Ride
+            <a href="#track" className="btn-primary px-9 py-3.5 text-sm font-medium">
+              Track a Matatu
               <ArrowRight className="w-4 h-4" />
             </a>
             <a href="#how-it-works" className="btn-outline px-9 py-3.5 text-sm font-medium">

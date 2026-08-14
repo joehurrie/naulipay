@@ -125,8 +125,8 @@ export default function VehicleShowcaseSection() {
                   {slide.description}
                 </p>
 
-                <a href="#ride-finder" className="btn-primary px-8 py-3.5 text-sm font-medium inline-flex items-center justify-center gap-2">
-                  Find Available Rides
+                <a href="#track" className="btn-primary px-8 py-3.5 text-sm font-medium inline-flex items-center justify-center gap-2">
+                  Track a Matatu
                   <ArrowRight className="w-4 h-4" />
                 </a>
               </div>

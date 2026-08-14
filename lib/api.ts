@@ -11,6 +11,7 @@ import type {
   CreditRepaymentOut,
   DriverAssign,
   FareEstimateOut,
+  FavoriteVehicleOut,
   HealthResponse,
   LocationPingIn,
   LoopMerchantAccountIn,
@@ -47,6 +48,7 @@ import type {
   VehicleCreate,
   VehicleDocumentCreate,
   VehicleDocumentOut,
+  VehicleLocationOut,
   VehicleOut,
   VehicleQROut,
   VehicleUpdate,
@@ -172,11 +174,13 @@ export const walletApi = {
 // ─── Vehicles / Fleet ─────────────────────────────────────────────────────────
 
 export const vehiclesApi = {
-  list: () => get<VehicleOut[]>('/vehicles'),
+  list: (plateNumber?: string) =>
+    get<VehicleOut[]>(`/vehicles?${queryString({ plate_number: plateNumber })}`),
   create: (body: VehicleCreate) => post<VehicleOut>('/vehicles', body),
   nearby: (lat: number, lng: number, category?: string) =>
     get<NearbySearchResponse>(`/vehicles/nearby/search?${queryString({ lat, lng, category })}`, { public: true }),
   get: (id: string) => get<VehicleOut>(`/vehicles/${id}`, { public: true }),
+  location: (id: string) => get<VehicleLocationOut | null>(`/vehicles/${id}/location`),
   update: (id: string, body: VehicleUpdate) => patch<VehicleOut>(`/vehicles/${id}`, body),
   activateRoute: (id: string, body: ActivateRouteRequest) =>
     post<VehicleOut>(`/vehicles/${id}/activate-route`, body),
@@ -190,6 +194,14 @@ export const vehiclesApi = {
     post<VehicleDocumentOut>(`/vehicles/${vehicleId}/documents/${docId}/verify`, {}),
   ping: (id: string, body: LocationPingIn) =>
     post<{ status: string }>(`/vehicles/${id}/ping`, body, { public: true }),
+  favorite: (id: string) => post<FavoriteVehicleOut>(`/vehicles/${id}/favorite`, {}),
+  unfavorite: (id: string) => request<void>(`/vehicles/${id}/favorite`, { method: 'DELETE' }),
+}
+
+// ─── Favorites (track your matatu) ─────────────────────────────────────────────
+
+export const favoritesApi = {
+  list: () => get<FavoriteVehicleOut[]>('/favorites'),
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

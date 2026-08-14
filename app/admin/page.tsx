@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { useRequireRole } from '@/lib/require-role'
 import { adminApi, transactionsApi, vehiclesApi } from '@/lib/api'
 import {
   allUsers, allTransactions, mockVehicles, pendingVehicles,
@@ -24,10 +25,11 @@ import {
 } from '@/lib/utils'
 import type { TransactionOut, VehicleDocumentOut, VehicleOut } from '@/lib/types'
 
-type Tab = 'overview' | 'users' | 'transactions' | 'vehicles' | 'telemetry'
+type Tab = 'overview' | 'users' | 'transactions' | 'vehicles' | 'cards' | 'telemetry'
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth()
+  const { isReady } = useRequireRole('admin')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [searchQuery, setSearchQuery] = useState('')
   const [txFilter, setTxFilter] = useState<'all' | string>('all')
@@ -235,8 +237,13 @@ export default function AdminDashboard() {
     { id: 'users', label: 'User Ledger', icon: <Users className="w-4 h-4" /> },
     { id: 'transactions', label: 'Transactions', icon: <DollarSign className="w-4 h-4" /> },
     { id: 'vehicles', label: 'Fleet Approval', icon: <Truck className="w-4 h-4" /> },
+    { id: 'cards', label: 'Tap Cards', icon: <CreditCard className="w-4 h-4" /> },
     { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4" /> },
   ]
+
+  // Nothing rendered until we know this viewer is actually an admin —
+  // useRequireRole is already redirecting them away otherwise.
+  if (!isReady) return null
 
   return (
     <div className="min-h-screen bg-brand-neutral flex">
@@ -282,12 +289,6 @@ export default function AdminDashboard() {
         </nav>
 
         <div className="p-4 border-t border-white/10 space-y-1">
-          <Link href="/commuter" className="sidebar-nav-item text-white/60 hover:bg-white/10 hover:text-white w-full">
-            <Users className="w-4 h-4" /> Commuter App
-          </Link>
-          <Link href="/owner" className="sidebar-nav-item text-white/60 hover:bg-white/10 hover:text-white w-full">
-            <Truck className="w-4 h-4" /> Owner Portal
-          </Link>
           <button onClick={logout} className="sidebar-nav-item text-white/60 hover:bg-white/10 hover:text-white w-full text-left">
             <LogOut className="w-4 h-4" /> Log Out
           </button>
@@ -403,52 +404,6 @@ export default function AdminDashboard() {
                         <Bar dataKey="revenue" fill="#1A1D20" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="card-white p-5">
-                  <h3 className="font-semibold text-brand-charcoal mb-3">Tap Cards</h3>
-                  <div className="grid lg:grid-cols-3 gap-5">
-                    <form onSubmit={handleRegisterCards} className="space-y-3">
-                      <label className="block text-sm font-medium text-brand-charcoal">Register Card UIDs</label>
-                      <textarea
-                        value={cardInput}
-                        onChange={(e) => setCardInput(e.target.value)}
-                        placeholder="Paste card UIDs separated by commas or new lines"
-                        className="input-light min-h-[100px]"
-                      />
-                      <button type="submit" className="btn-primary text-sm py-2 px-4">Register Cards</button>
-                    </form>
-                    <div className="space-y-3">
-                      <label className="block text-sm font-medium text-brand-charcoal">Bulk Issue Demo Cards</label>
-                      <div className="flex gap-2">
-                        <input type="number" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} className="input-light w-24" />
-                        <button onClick={handleBulkIssue} className="btn-primary text-sm py-2 px-4">Issue</button>
-                      </div>
-                      <p className="text-xs text-gray-400">{cards.length} active · {unassignedCards.length} unassigned</p>
-                    </div>
-                    <form onSubmit={handleAssignCard} className="space-y-3">
-                      <label className="block text-sm font-medium text-brand-charcoal">Assign Unassigned Card</label>
-                      <select
-                        value={selectedCardId}
-                        onChange={(e) => setSelectedCardId(e.target.value)}
-                        className="input-light"
-                      >
-                        <option value="">Select empty card</option>
-                        {unassignedCards.map((c) => (
-                          <option key={c.id} value={c.id}>{c.card_uid}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={assignUserId}
-                        onChange={(e) => setAssignUserId(e.target.value)}
-                        placeholder="User ID"
-                        className="input-light"
-                        required
-                      />
-                      <button type="submit" className="btn-primary text-sm py-2 px-4 w-full">Assign to User</button>
-                    </form>
                   </div>
                 </div>
 
@@ -684,6 +639,83 @@ export default function AdminDashboard() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'cards' && (
+              <motion.div key="cards" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="stat-card">
+                    <p className="text-xs text-gray-500 mb-1">Active cards</p>
+                    <p className="text-2xl font-bold text-brand-charcoal">{cards.length}</p>
+                  </div>
+                  <div className="stat-card">
+                    <p className="text-xs text-gray-500 mb-1">Unassigned (empty) cards</p>
+                    <p className="text-2xl font-bold text-brand-charcoal">{unassignedCards.length}</p>
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-5">
+                  <form onSubmit={handleRegisterCards} className="card-white p-5 space-y-3">
+                    <h3 className="font-semibold text-brand-charcoal">Register real card UIDs</h3>
+                    <p className="text-gray-400 text-xs">Read a physical card&apos;s hardware UID off the NFC reader&apos;s Serial Monitor first.</p>
+                    <textarea
+                      value={cardInput}
+                      onChange={(e) => setCardInput(e.target.value)}
+                      placeholder="Paste card UIDs separated by commas or new lines"
+                      className="input-light min-h-[100px]"
+                    />
+                    <button type="submit" className="btn-primary text-sm py-2 px-4">Register Cards</button>
+                  </form>
+
+                  <div className="card-white p-5 space-y-3">
+                    <h3 className="font-semibold text-brand-charcoal">Bulk-issue demo cards</h3>
+                    <p className="text-gray-400 text-xs">Placeholder UIDs for QA — won&apos;t match a real tapped card.</p>
+                    <div className="flex gap-2">
+                      <input type="number" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} className="input-light w-24" />
+                      <button onClick={handleBulkIssue} className="btn-primary text-sm py-2 px-4">Issue</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-white overflow-hidden">
+                  <div className="p-5 border-b border-gray-100">
+                    <h3 className="font-semibold text-brand-charcoal">Empty cards</h3>
+                    <p className="text-gray-400 text-sm">{unassignedCards.length} unassigned — pick one to assign to a user</p>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {unassignedCards.map((c) => (
+                      <div key={c.id} className="flex items-center gap-3 px-5 py-3.5">
+                        <CreditCard className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="font-mono text-sm text-brand-charcoal flex-1">{c.card_uid}</span>
+                        <button
+                          onClick={() => setSelectedCardId(c.id)}
+                          className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                            selectedCardId === c.id ? 'bg-brand-orange text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {selectedCardId === c.id ? 'Selected' : 'Select to assign'}
+                        </button>
+                      </div>
+                    ))}
+                    {unassignedCards.length === 0 && (
+                      <p className="px-5 py-6 text-sm text-gray-400">No empty cards right now.</p>
+                    )}
+                  </div>
+                  {selectedCardId && (
+                    <form onSubmit={handleAssignCard} className="p-5 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="text"
+                        value={assignUserId}
+                        onChange={(e) => setAssignUserId(e.target.value)}
+                        placeholder="User ID to assign this card to"
+                        className="input-light flex-1"
+                        required
+                      />
+                      <button type="submit" className="btn-primary text-sm py-2 px-4">Assign</button>
+                    </form>
+                  )}
                 </div>
               </motion.div>
             )}
