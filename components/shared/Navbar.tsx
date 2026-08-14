@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/lib/auth'
+import { getInitials } from '@/lib/utils'
 
 interface NavbarProps {
   transparent?: boolean
@@ -14,6 +17,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30)
@@ -32,11 +36,13 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     { href: '/#loyalty', label: 'Rewards' },
   ]
 
-  const dashLinks = [
-    { href: '/commuter', label: 'Commuter' },
-    { href: '/owner', label: 'Fleet Owner' },
-    { href: '/admin', label: 'Admin' },
-  ]
+  const dashLinks = user
+    ? [
+        { href: '/commuter', label: 'Commuter' },
+        { href: '/owner', label: 'Fleet Owner' },
+        { href: '/admin', label: 'Admin' },
+      ]
+    : []
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${navBg}`}>
@@ -66,7 +72,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                 {link.label}
               </a>
             ))}
-            <div className="w-px h-5 bg-white/15 mx-3" />
+            {dashLinks.length > 0 && <div className="w-px h-5 bg-white/15 mx-3" />}
             {dashLinks.map(link => (
               <Link
                 key={link.href}
@@ -84,8 +90,31 @@ export default function Navbar({ transparent = false }: NavbarProps) {
 
           {/* Right Actions */}
           <div className="hidden md:flex items-center gap-2">
-            <button className="btn-ghost text-sm">Sign In</button>
-            <button className="btn-primary text-sm">Get Started</button>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-right">
+                  <div className="w-8 h-8 bg-brand-orange text-white rounded-xl flex items-center justify-center font-bold text-xs">
+                    {getInitials(user.full_name || user.phone_number)}
+                  </div>
+                  <div className="hidden lg:block">
+                    <p className="text-white text-sm font-medium leading-tight">{user.full_name || user.phone_number}</p>
+                    <p className="text-zinc-500 text-xs capitalize leading-tight">{user.role}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                  aria-label="Log out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link href="/login" className="btn-ghost text-sm">Sign In</Link>
+                <Link href="/login" className="btn-primary text-sm">Get Started</Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Toggle */}
@@ -134,21 +163,47 @@ export default function Navbar({ transparent = false }: NavbarProps) {
                   {link.label}
                 </a>
               ))}
-              <div className="border-t border-zinc-900 my-3" />
-              <p className="px-4 text-xs text-zinc-600 uppercase tracking-wider mb-2 font-mono-brand">Dashboards</p>
-              {dashLinks.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="block px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl text-sm font-medium transition-all"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {user && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 bg-brand-orange text-white rounded-xl flex items-center justify-center font-bold text-xs">
+                    {getInitials(user.full_name || user.phone_number)}
+                  </div>
+                  <div>
+                    <p className="text-white text-sm font-medium">{user.full_name || user.phone_number}</p>
+                    <p className="text-zinc-500 text-xs capitalize">{user.role}</p>
+                  </div>
+                </div>
+              )}
+              {dashLinks.length > 0 && (
+                <>
+                  <div className="border-t border-zinc-900 my-3" />
+                  <p className="px-4 text-xs text-zinc-600 uppercase tracking-wider mb-2 font-mono-brand">Dashboards</p>
+                  {dashLinks.map(link => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="block px-4 py-3 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl text-sm font-medium transition-all"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </>
+              )}
               <div className="border-t border-zinc-900 pt-4 mt-3 flex flex-col gap-2">
-                <button className="w-full btn-outline text-sm py-3">Sign In</button>
-                <button className="w-full btn-primary text-sm py-3">Get Started</button>
+                {user ? (
+                  <button
+                    onClick={() => { setMobileOpen(false); logout() }}
+                    className="w-full btn-outline text-sm py-3 flex items-center justify-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" /> Log Out
+                  </button>
+                ) : (
+                  <>
+                    <Link href="/login" className="w-full btn-outline text-sm py-3 text-center">Sign In</Link>
+                    <Link href="/login" className="w-full btn-primary text-sm py-3 text-center">Get Started</Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
