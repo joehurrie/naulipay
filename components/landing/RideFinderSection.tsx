@@ -11,10 +11,10 @@ const MATATU_FARE = fareEstimates['matatu']
 export default function RideFinderSection() {
   const { setBookedVehicle, setRideSearched } = useRide()
 
-  const [location, setLocation]       = useState('')
+  const [location, setLocation] = useState('')
   const [destination, setDestination] = useState('')
-  const [loading, setLoading]         = useState(false)
-  const [results, setResults]         = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState(false)
   const [showPaymentOverlay, setShowPaymentOverlay] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
 
@@ -46,7 +46,7 @@ export default function RideFinderSection() {
       {/* Faint traffic bg */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none"
-        style={{ backgroundImage: `url('https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=1600&q=80')` }}
+        style={{ backgroundImage: `url('/bus1.jpg')` }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black" />
       <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-brand-orange/4 rounded-full blur-[140px] pointer-events-none" />
@@ -255,7 +255,7 @@ export default function RideFinderSection() {
                     >
                       <X className="w-5 h-5" />
                     </button>
-                    
+
                     <div className="text-center mb-6 mt-2">
                       <h3 className="text-xl font-bold text-white">Confirm Payment</h3>
                       <p className="text-sm text-zinc-400 mt-2 leading-relaxed">

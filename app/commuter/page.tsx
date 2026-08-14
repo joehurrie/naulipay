@@ -35,7 +35,8 @@ export default function CommuterDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-brand-neutral flex">
+    <>
+      <div className="min-h-screen bg-brand-neutral flex">
 
       {/* Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 fixed h-full">
@@ -520,6 +521,6 @@ export default function CommuterDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   )
 }

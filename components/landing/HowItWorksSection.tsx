@@ -6,20 +6,20 @@ import { Smartphone, MapPin, CreditCard, CheckCircle } from 'lucide-react'
 
 const steps = [
   {
-    number: '01',
-    icon: <Smartphone className="w-5 h-5" />,
-    title: 'Select Your Ride',
-    description: 'Choose from Matatu, Taxi, or Boda. View real-time availability, compare fares, and check estimated travel times across all options.',
-    highlights: ['Compare fare estimates instantly', 'See live vehicle availability', 'Check travel time estimates'],
-    bgImage: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80',
-  },
-  {
     number: '02',
     icon: <MapPin className="w-5 h-5" />,
     title: 'Book & Track',
     description: 'Secure your seat with first-come-first-served booking. Track your ride live on GPS and share your journey link for peace of mind.',
     highlights: ['Instant seat confirmation', 'Live GPS route tracking', 'Share your trip link'],
-    bgImage: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80',
+    bgImage: '/insidemat.jpg',
+  },
+  {
+    number: '01',
+    icon: <Smartphone className="w-5 h-5" />,
+    title: 'Select Your Ride',
+    description: 'Choose from Matatu, Taxi, or Boda. View real-time availability, compare fares, and check estimated travel times across all options.',
+    highlights: ['Compare fare estimates instantly', 'See live vehicle availability', 'Check travel time estimates'],
+    bgImage: '/bus1.jpg',
   },
   {
     number: '03',
@@ -27,7 +27,7 @@ const steps = [
     title: 'Tap & Pay',
     description: 'At your destination, tap your Nauli Pay NFC card on the terminal. Or pay via in-app payment. Earn loyalty points instantly.',
     highlights: ['Nauli Pay NFC card', 'In-app payments', 'Earn loyalty points'],
-    bgImage: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&q=80',
+    bgImage: '/dere.jpg',
   },
 ]
 
@@ -146,7 +146,7 @@ export default function HowItWorksSection() {
                 const cx = 50 + r * Math.cos(rad)
                 const cy = 50 + r * Math.sin(rad)
                 const isClockHere = clockStep === i
-                const isSelected  = selectedStep === i
+                const isSelected = selectedStep === i
 
                 return (
                   <button

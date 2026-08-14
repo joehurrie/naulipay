@@ -11,7 +11,7 @@ const slides = [
     title: 'Never miss a ride',
     description: 'Get real-time alerts as your matatu approaches. Live GPS means zero guesswork — just show up and board.',
     icon: <Bell className="w-5 h-5" />,
-    image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=1200&q=85',
+    image: '/phone.jpg',
     accentColor: '#FF5F00',
   },
   {
@@ -20,7 +20,7 @@ const slides = [
     title: 'Instant transaction with your Naulipay wallet',
     description: 'Top up once, ride all day. Your Naulipay wallet balance deducts in milliseconds — no cash, no change, no friction.',
     icon: <Wallet className="w-5 h-5" />,
-    image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&q=85',
+    image: '/car.jpg',
     accentColor: '#FF7A1A',
   },
   {
@@ -29,7 +29,7 @@ const slides = [
     title: 'Tap pay go with your NauliPass NFC',
     description: 'Hold your NauliPass NFC card to any terminal. Board in under 2 seconds and you\'re already moving.',
     icon: <CreditCard className="w-5 h-5" />,
-    image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&q=85',
+    image: '/band.jpg',
     accentColor: '#CC4A00',
   },
 ]

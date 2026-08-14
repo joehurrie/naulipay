@@ -30,10 +30,10 @@ export default function FleetSection() {
         <motion.div {...fadeUp(0)} className="mb-14">
           <p className="label-sm text-brand-orange mb-4">Live Fleet Status</p>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <h2 className="heading-lg text-white max-w-xl">
+            <h2 className="heading-lg text-brand-orange max-w-xl">
               Real-time matatu tracking<br />across Nairobi
             </h2>
-            <p className="body-lg text-zinc-500 max-w-xs sm:text-right">
+            <p className="body-lg text-brand-orange max-w-xs sm:text-right">
               {rideSearched
                 ? 'Showing active matatus matching your search'
                 : 'See exactly where matatus are right now'}
@@ -50,7 +50,7 @@ export default function FleetSection() {
           {/* Map background */}
           <div
             className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1600&q=80)' }}
+            style={{ backgroundImage: 'url(/map.jfif)' }}
           />
           <div className="absolute inset-0 bg-zinc-950/68" />
 
@@ -58,14 +58,14 @@ export default function FleetSection() {
           <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
             <path d="M-10,180 Q200,220 450,130 T900,160" fill="none" stroke="#FF5F00" strokeWidth="1.5" opacity="0.4" />
             <path d="M-10,320 Q180,290 380,340 T900,310" fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.2" />
-            <path d="M180,-10 L210,540"  fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.2" />
-            <path d="M520,-10 L480,540"  fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.2" />
-            <path d="M750,-10 L700,540"  fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.15" />
+            <path d="M180,-10 L210,540" fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.2" />
+            <path d="M520,-10 L480,540" fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.2" />
+            <path d="M750,-10 L700,540" fill="none" stroke="#FF5F00" strokeWidth="1" opacity="0.15" />
             <text x="32%" y="14%" fill="#FF5F00" fontSize="11" opacity="0.6" fontFamily="Space Mono">Nairobi CBD</text>
-            <text x="6%"  y="82%" fill="#FF5F00" fontSize="9"  opacity="0.4" fontFamily="Space Mono">Westlands</text>
-            <text x="68%" y="64%" fill="#FF5F00" fontSize="9"  opacity="0.4" fontFamily="Space Mono">Eastleigh</text>
-            <text x="18%" y="50%" fill="#FF5F00" fontSize="9"  opacity="0.3" fontFamily="Space Mono">Ngara</text>
-            <text x="55%" y="35%" fill="#FF5F00" fontSize="9"  opacity="0.3" fontFamily="Space Mono">Pangani</text>
+            <text x="6%" y="82%" fill="#FF5F00" fontSize="9" opacity="0.4" fontFamily="Space Mono">Westlands</text>
+            <text x="68%" y="64%" fill="#FF5F00" fontSize="9" opacity="0.4" fontFamily="Space Mono">Eastleigh</text>
+            <text x="18%" y="50%" fill="#FF5F00" fontSize="9" opacity="0.3" fontFamily="Space Mono">Ngara</text>
+            <text x="55%" y="35%" fill="#FF5F00" fontSize="9" opacity="0.3" fontFamily="Space Mono">Pangani</text>
           </svg>
 
           {/* Matatu Pins */}

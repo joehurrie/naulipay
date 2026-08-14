@@ -20,7 +20,7 @@ export default function HeroSection() {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage:
-            'url(https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=1800&q=85)',
+            'url(/inside1.jpg)',
         }}
       />
 
@@ -49,12 +49,6 @@ export default function HeroSection() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
 
           {/* Live badge */}
-          <motion.div {...fadeUp(0)} className="flex justify-center mb-8">
-            <span className="badge-orange">
-              <span className="w-1.5 h-1.5 bg-brand-orange rounded-full animate-pulse mr-2" />
-              Live on Nairobi roads
-            </span>
-          </motion.div>
 
           {/* Headline */}
           <motion.div {...fadeUp(0.1)} className="mb-8">

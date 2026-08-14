@@ -29,7 +29,7 @@ export default function LoyaltySection() {
         className="absolute inset-0 bg-cover bg-center opacity-10 pointer-events-none"
         style={{
           backgroundImage:
-            'url(https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&q=80)',
+            'url(/Desktop%20-%209.jpg)',
         }}
       />
       <div className="absolute inset-0 bg-gradient-to-br from-black via-black/95 to-zinc-950" />
