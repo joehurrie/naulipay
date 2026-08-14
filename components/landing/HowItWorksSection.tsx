@@ -234,10 +234,10 @@ export default function HowItWorksSection() {
               className="mt-8 flex items-center gap-5 pl-2"
             >
               <button
-                onClick={() => { document.getElementById('ride-finder')?.scrollIntoView({ behavior: 'smooth' }) }}
+                onClick={() => { document.getElementById('track')?.scrollIntoView({ behavior: 'smooth' }) }}
                 className="bg-black text-white font-medium px-8 py-3.5 rounded-full hover:bg-zinc-900 transition-colors text-sm border border-zinc-800"
               >
-                Estimate Live Route
+                Track a Matatu
               </button>
               <p className="text-white/60 text-xs font-light">Calculated in real-time</p>
             </motion.div>

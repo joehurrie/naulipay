@@ -168,14 +168,6 @@ export const mapVehiclePins = [
   { id: 'p12', type: 'matatu' as VehicleType, lat: 30, lng: 85, label: 'Route 67' },
 ]
 
-// ─── Fare Estimates ────────────────────────────────────────────────────────────
-
-export const fareEstimates: Record<VehicleType, { base: number; time: string; description: string }> = {
-  matatu: { base: 70, time: '28 min', description: 'Fixed route • Up to 14 passengers' },
-  taxi: { base: 650, time: '22 min', description: 'Point-to-point • Private vehicle' },
-  boda: { base: 120, time: '15 min', description: 'Motorcycle • Single passenger' },
-}
-
 export const vehicleLabels: Record<VehicleType, string> = {
   matatu: 'Matatu',
   taxi: 'Taxi',
