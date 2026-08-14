@@ -1,12 +1,12 @@
 'use client'
 
 const stats = [
-  { label: '2,450+ Commuters Today' },
+  { label: '2,450+ Rides Completed' },
   { label: '24 Active Vehicles' },
   { label: 'KES 50 Avg Fare' },
   { label: 'Nairobi CBD' },
   { label: 'Tap-to-Pay NFC' },
-  { label: 'M-Pesa Integrated' },
+  { label: 'In-App Payments' },
   { label: '3 Ride Types' },
   { label: 'Live GPS Tracking' },
 ]

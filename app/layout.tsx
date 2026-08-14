@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Naulipass — Convenient Rides, Seamless Payments',
-  description: 'Naulipass is East Africa\'s smartest urban transit payment platform. Book Matatus, Taxis, and Bodas with tap-to-pay technology, loyalty rewards, and micro-credit services.',
-  keywords: ['matatu', 'taxi', 'boda', 'nairobi', 'transit', 'tap-to-pay', 'NFC', 'RFID', 'Kenya', 'commuter'],
+  title: 'Naulipay — Convenient Rides, Seamless Payments',
+  description: 'Naulipay is East Africa\'s smartest urban transit payment platform. Book Matatus, Taxis, and Bodas with tap-to-pay technology, loyalty rewards, and micro-credit services.',
+  keywords: ['matatu', 'taxi', 'boda', 'nairobi', 'transit', 'tap-to-pay', 'NFC', 'RFID', 'Kenya', 'commuter', 'naulipay'],
   openGraph: {
-    title: 'Naulipass — Convenient Rides, Seamless Payments',
+    title: 'Naulipay — Convenient Rides, Seamless Payments',
     description: 'East Africa\'s smartest urban transit payment platform.',
     type: 'website',
   },

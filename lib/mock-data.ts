@@ -158,13 +158,14 @@ export const pendingVehicles = [
 // ─── Map pins (Nairobi area) ───────────────────────────────────────────────────
 
 export const mapVehiclePins = [
-  { id: 'p1', type: 'matatu' as VehicleType, lat: 52, lng: 44, label: 'Route 111' },
-  { id: 'p2', type: 'matatu' as VehicleType, lat: 35, lng: 30, label: 'Route 105' },
-  { id: 'p3', type: 'taxi' as VehicleType, lat: 60, lng: 55, label: 'Available' },
-  { id: 'p4', type: 'boda' as VehicleType, lat: 25, lng: 65, label: 'Available' },
-  { id: 'p5', type: 'matatu' as VehicleType, lat: 70, lng: 38, label: 'Route 46' },
-  { id: 'p6', type: 'boda' as VehicleType, lat: 45, lng: 72, label: 'Available' },
-  { id: 'p7', type: 'taxi' as VehicleType, lat: 80, lng: 25, label: 'Available' },
+  { id: 'p1',  type: 'matatu' as VehicleType, lat: 52, lng: 44, label: 'Route 111' },
+  { id: 'p2',  type: 'matatu' as VehicleType, lat: 35, lng: 30, label: 'Route 105' },
+  { id: 'p5',  type: 'matatu' as VehicleType, lat: 70, lng: 38, label: 'Route 46' },
+  { id: 'p8',  type: 'matatu' as VehicleType, lat: 22, lng: 50, label: 'Route 58' },
+  { id: 'p9',  type: 'matatu' as VehicleType, lat: 62, lng: 78, label: 'Route 33' },
+  { id: 'p10', type: 'matatu' as VehicleType, lat: 44, lng: 18, label: 'Route 19' },
+  { id: 'p11', type: 'matatu' as VehicleType, lat: 82, lng: 60, label: 'Route 42' },
+  { id: 'p12', type: 'matatu' as VehicleType, lat: 30, lng: 85, label: 'Route 67' },
 ]
 
 // ─── Fare Estimates ────────────────────────────────────────────────────────────

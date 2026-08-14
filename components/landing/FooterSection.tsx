@@ -25,12 +25,13 @@ export default function FooterSection() {
           {/* Brand */}
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-5">
-              <div className="w-7 h-7 bg-brand-orange rounded-lg flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white" fill="white" />
-              </div>
-              <span className="text-white font-semibold text-lg font-grotesk">
-                nauli<span className="text-brand-orange">pass</span>
-              </span>
+              <Link href="/" className="flex items-center flex-shrink-0">
+                <img
+                  src="/logo.svg"
+                  alt="Naulipay"
+                  className="h-8 w-auto"
+                />
+              </Link>
             </div>
             <p className="text-zinc-600 text-sm leading-relaxed max-w-xs mb-6">
               East Africa&apos;s smartest urban transit payment platform. Book smarter, pay instantly, earn more.
@@ -107,7 +108,7 @@ export default function FooterSection() {
         {/* Bottom bar */}
         <div className="border-t border-zinc-900 mt-14 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-zinc-700 text-xs">
-            © {currentYear} Naulipass Ltd. All rights reserved. Registered in Kenya.
+            © {currentYear} Naulipay Ltd. All rights reserved. Registered in Kenya.
           </p>
           <div className="flex items-center gap-5">
             {['Privacy', 'Terms', 'Cookies'].map(label => (

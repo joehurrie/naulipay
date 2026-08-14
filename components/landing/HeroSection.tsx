@@ -105,7 +105,7 @@ export default function HeroSection() {
             </div>
             <div className="flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-brand-orange flex-shrink-0" />
-              <span>NFC / M-Pesa</span>
+              <span>NauliPass Card</span>
             </div>
             <div className="flex items-center gap-2">
               <Wifi className="w-4 h-4 text-brand-orange flex-shrink-0" />
@@ -122,10 +122,10 @@ export default function HeroSection() {
         transition={{ duration: 0.8, delay: 0.6 }}
         className="relative z-10 border-t border-white/10 flex-shrink-0"
       >
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-7">
           <div className="grid grid-cols-3 divide-x divide-white/10">
             {[
-              { value: '2,450+', label: 'Commuters today' },
+              { value: '2,450+', label: 'Rides completed' },
               { value: '24', label: 'Active vehicles' },
               { value: 'KES 70', label: 'Avg matatu fare' },
             ].map(stat => (
@@ -138,11 +138,11 @@ export default function HeroSection() {
         </div>
       </motion.div>
 
-      {/* ── Scroll hint ── */}
+      {/* ── Scroll hint — sits above the stats bar with breathing room ── */}
       <motion.div
         animate={{ y: [0, 8, 0] }}
         transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10"
+        className="absolute bottom-28 left-1/2 -translate-x-1/2 z-10"
       >
         <div className="w-5 h-8 border border-zinc-700 rounded-full flex justify-center pt-1.5">
           <div className="w-1 h-2 bg-brand-orange rounded-full" />

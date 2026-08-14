@@ -17,7 +17,7 @@ export default function LoyaltySection() {
 
   const perks = [
     { icon: <Star className="w-5 h-5" />, title: 'Points Per Trip', desc: 'Earn up to 20% of fare value back as loyalty points on every ride' },
-    { icon: <Gift className="w-5 h-5" />, title: 'Redeem Rewards', desc: 'Use points for free rides, fare discounts, or transfer to M-Pesa' },
+    { icon: <Gift className="w-5 h-5" />, title: 'Redeem Rewards', desc: 'Use points for free rides, fare discounts, or transfer to in-app wallet' },
     { icon: <Landmark className="w-5 h-5" />, title: 'Micro-Credit Access', desc: 'Complete 50 verified trips to unlock emergency credit up to KES 10,000' },
     { icon: <TrendingUp className="w-5 h-5" />, title: 'Credit Scoring', desc: 'Build a verified transit credit score that unlocks better financial services' },
   ]
@@ -46,7 +46,7 @@ export default function LoyaltySection() {
               your financial future
             </h2>
             <p className="body-lg text-zinc-400 mb-10 max-w-md">
-              Naulipass isn&apos;t just a transit app — it&apos;s your gateway to financial inclusion.
+              Naulipay isn&apos;t just a transit app — it&apos;s your gateway to financial inclusion.
               Earn loyalty points on every trip and unlock micro-credit services as you ride more.
             </p>
 
@@ -146,7 +146,7 @@ export default function LoyaltySection() {
                 ))}
               </div>
               <button
-                onClick={() => alert('Loyalty redemption features are managed in the commuter dashboard')}
+                onClick={() => alert('Loyalty redemption features are managed in the Naulipay commuter dashboard')}
                 className="w-full mt-6 flex items-center justify-center gap-2 text-brand-orange text-sm font-semibold hover:gap-3 transition-all duration-200 py-3 border border-brand-orange/20 rounded-xl hover:bg-brand-orange/5"
               >
                 Redeem Points to Wallet <ChevronRight className="w-4 h-4" />

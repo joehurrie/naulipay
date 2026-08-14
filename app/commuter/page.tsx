@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, MapPin, Star, CreditCard, TrendingUp, Clock,
   CheckCircle, XCircle, ChevronRight, Plus, Bell, LayoutDashboard,
-  History, Settings, LogOut, Navigation, Zap, Share2, ArrowRight
+  History, Settings, LogOut, Navigation, Zap, Share2, ArrowRight,
+  Phone, X
 } from 'lucide-react'
 import Link from 'next/link'
-import { mockTrips, currentUser, fareEstimates, vehicleEmojis, vehicleLabels, type VehicleType } from '@/lib/mock-data'
+import { mockTrips, currentUser, fareEstimates, vehicleEmojis, vehicleLabels, type VehicleType, mockVehicles, type Vehicle, type Trip } from '@/lib/mock-data'
 import { formatCurrency, formatDate, calculateCreditProgress, getInitials } from '@/lib/utils'
 
 type Tab = 'overview' | 'trips' | 'wallet' | 'book'
@@ -16,9 +17,13 @@ type Tab = 'overview' | 'trips' | 'wallet' | 'book'
 export default function CommuterDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [selectedRideType, setSelectedRideType] = useState<VehicleType>('matatu')
+  const [showPaymentOverlay, setShowPaymentOverlay] = useState(false)
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [localTrips, setLocalTrips] = useState<Trip[]>(mockTrips)
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
 
-  const completedTrips = mockTrips.filter(t => t.status === 'completed')
-  const activeTrip = mockTrips.find(t => t.status === 'active')
+  const completedTrips = localTrips.filter(t => t.status === 'completed')
+  const activeTrip = localTrips.find(t => t.status === 'active')
   const creditProgress = calculateCreditProgress(currentUser.totalTrips)
   const totalEarned = completedTrips.reduce((s, t) => s + t.points, 0)
 
@@ -346,7 +351,7 @@ export default function CommuterDashboard() {
                       <button
                         key={v}
                         id={`book-${v}`}
-                        onClick={() => setSelectedRideType(v)}
+                        onClick={() => { setSelectedRideType(v); setSelectedVehicle(null); }}
                         className={`p-4 rounded-xl border-2 text-center transition-all duration-200 ${
                           selectedRideType === v
                             ? 'border-brand-orange bg-brand-orange/5'
@@ -359,6 +364,42 @@ export default function CommuterDashboard() {
                       </button>
                     ))}
                   </div>
+
+                  {/* Available Vehicles on Route */}
+                  {mockVehicles.filter(v => v.type === selectedRideType && v.status === 'active').length > 0 && (
+                    <div className="mb-6">
+                      <p className="text-sm font-medium text-gray-700 mb-3">Available {vehicleLabels[selectedRideType]}s near you</p>
+                      <div className="space-y-3">
+                        {mockVehicles
+                          .filter(v => v.type === selectedRideType && v.status === 'active')
+                          .map(vehicle => (
+                            <button
+                              key={vehicle.id}
+                              onClick={() => setSelectedVehicle(vehicle)}
+                              className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
+                                selectedVehicle?.id === vehicle.id
+                                  ? 'border-brand-orange bg-brand-orange/5'
+                                  : 'border-gray-100 hover:border-gray-200 bg-white'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg">
+                                  {vehicleEmojis[vehicle.type]}
+                                </div>
+                                <div className="text-left">
+                                  <p className="font-semibold text-brand-charcoal text-sm">{vehicle.plate}</p>
+                                  <p className="text-xs text-gray-500">{vehicle.driver} • {vehicle.capacity - vehicle.passengers} seats left</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-sm text-brand-charcoal">{vehicle.currentRoute}</p>
+                                <p className="text-xs text-brand-orange font-medium">1 min away</p>
+                              </div>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Fare Summary */}
                   <div className="bg-gray-50 rounded-xl p-4 mb-5">
@@ -380,7 +421,12 @@ export default function CommuterDashboard() {
                     </div>
                   </div>
 
-                  <button id="confirm-booking-btn" className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2">
+                  <button 
+                    id="confirm-booking-btn" 
+                    onClick={() => setShowPaymentOverlay(true)} 
+                    disabled={!selectedVehicle}
+                    className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     <CheckCircle className="w-5 h-5" /> Confirm Booking
                   </button>
                 </div>
@@ -389,6 +435,91 @@ export default function CommuterDashboard() {
           </AnimatePresence>
         </div>
       </div>
+    </div>
+
+      {/* Payment Overlay */}
+      <AnimatePresence>
+        {showPaymentOverlay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-brand-charcoal/40 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm overflow-hidden bg-white/70 backdrop-blur-xl border border-white/50 shadow-2xl rounded-3xl p-6"
+            >
+              <button
+                onClick={() => setShowPaymentOverlay(false)}
+                className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-black/5 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <div className="text-center mb-6 mt-2">
+                      <h3 className="text-xl font-bold text-brand-charcoal">Confirm Payment</h3>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                  For Fleet No: <span className="font-semibold text-brand-charcoal">{selectedVehicle?.plate || 'Any'}</span><br />
+                  From <span className="font-semibold text-brand-charcoal">Current Location</span> to <span className="font-semibold text-brand-charcoal">Destination</span><br />
+                  Total Amount: <strong className="text-brand-orange">KES {fareEstimates[selectedRideType].base}</strong>
+                </p>
+                <p className="text-xs text-gray-400 mt-3">
+                  Enter M-Pesa phone number below to complete transaction.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 block">Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="254 7XX XXX XXX"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="w-full bg-white/50 border border-white/40 focus:bg-white focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 rounded-xl px-4 py-3 text-brand-charcoal outline-none transition-all placeholder:text-gray-400"
+                  />
+                </div>
+                <button
+                  className="w-full bg-brand-orange text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-brand-orange/25 hover:shadow-brand-orange/40 active:scale-[0.98] transition-all flex justify-center items-center gap-2"
+                  onClick={() => {
+                    if (selectedVehicle) {
+                      const newTrip: Trip = {
+                        id: `T${Date.now()}`,
+                        vehicleType: selectedVehicle.type,
+                        route: selectedVehicle.currentRoute,
+                        from: 'Current Location',
+                        to: 'Destination',
+                        fare: fareEstimates[selectedRideType].base,
+                        status: 'active',
+                        date: new Date().toISOString().split('T')[0],
+                        driver: selectedVehicle.driver,
+                        plate: selectedVehicle.plate,
+                        points: 0,
+                        paymentMethod: 'mpesa',
+                        duration: 'In progress',
+                      }
+                      
+                      const updatedTrips = localTrips.map(t => 
+                        t.status === 'active' ? { ...t, status: 'completed' as const } : t
+                      )
+                      
+                      setLocalTrips([newTrip, ...updatedTrips])
+                      setShowPaymentOverlay(false)
+                      setActiveTab('overview')
+                      setSelectedVehicle(null)
+                    }
+                  }}
+                >
+                  Pay KES {fareEstimates[selectedRideType].base}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

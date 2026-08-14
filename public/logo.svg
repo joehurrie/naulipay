@@ -1,0 +1,8 @@
+<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- N lettermark -->
+  <rect width="28" height="28" x="0" y="6" rx="6" fill="#FF5F00"/>
+  <text x="5" y="25" font-family="'Space Grotesk', sans-serif" font-weight="700" font-size="18" fill="white">N</text>
+  <!-- Wordmark -->
+  <text x="36" y="27" font-family="'Space Grotesk', sans-serif" font-weight="600" font-size="19" fill="white" letter-spacing="-0.5">nauli</text>
+  <text x="84" y="27" font-family="'Space Grotesk', sans-serif" font-weight="600" font-size="19" fill="#FF5F00" letter-spacing="-0.5">pay</text>
+</svg>

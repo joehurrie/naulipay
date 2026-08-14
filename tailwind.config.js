@@ -9,9 +9,9 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          orange: '#FF6B00',
-          'orange-light': '#FF8C33',
-          'orange-dark': '#CC5500',
+          orange: '#FF5F00',
+          'orange-light': '#FF7A1A',
+          'orange-dark': '#CC4A00',
           charcoal: '#1A1D20',
           'charcoal-light': '#2C3036',
           'charcoal-mid': '#3D4349',

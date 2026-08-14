@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -22,15 +22,14 @@ export default function Navbar({ transparent = false }: NavbarProps) {
   }, [])
 
   const isLanding = pathname === '/'
-
   const navBg = transparent && !scrolled && !mobileOpen
     ? 'bg-transparent'
     : 'bg-black/70 backdrop-blur-xl border-b border-zinc-900/60 shadow-2xl shadow-black/40'
 
   const navLinks = [
-    { href: '/#fleet', label: 'Find Rides' },
-    { href: '/#how-it-works', label: 'How It Works' },
-    { href: '/#loyalty', label: 'Loyalty' },
+    { href: '/', label: 'Home' },
+    { href: '/#how-it-works', label: 'How it works' },
+    { href: '/#loyalty', label: 'Rewards' },
   ]
 
   const dashLinks = [
@@ -44,14 +43,16 @@ export default function Navbar({ transparent = false }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div className="w-7 h-7 bg-brand-orange rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200 shadow-lg shadow-orange-500/30">
-              <Zap className="w-4 h-4 text-white" fill="white" />
-            </div>
-            <span className="text-white font-semibold text-lg tracking-tight font-grotesk">
-              nauli<span className="text-brand-orange">pass</span>
-            </span>
+          {/* Logo — SVG wordmark */}
+          <Link href="/" className="flex items-center flex-shrink-0">
+            <Image
+              src="/logo.svg"
+              alt="Naulipay"
+              width={136}
+              height={34}
+              priority
+              className="h-8 w-auto"
+            />
           </Link>
 
           {/* Desktop Nav */}
@@ -97,9 +98,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
             <div className="w-5 h-4 flex flex-col justify-between">
               <span
                 className="block h-0.5 bg-white rounded-full transition-all duration-300 origin-center"
-                style={{
-                  transform: mobileOpen ? 'translateY(7px) rotate(45deg)' : 'none',
-                }}
+                style={{ transform: mobileOpen ? 'translateY(7px) rotate(45deg)' : 'none' }}
               />
               <span
                 className="block h-0.5 bg-white rounded-full transition-all duration-300"
@@ -107,9 +106,7 @@ export default function Navbar({ transparent = false }: NavbarProps) {
               />
               <span
                 className="block h-0.5 bg-white rounded-full transition-all duration-300 origin-center"
-                style={{
-                  transform: mobileOpen ? 'translateY(-7px) rotate(-45deg)' : 'none',
-                }}
+                style={{ transform: mobileOpen ? 'translateY(-7px) rotate(-45deg)' : 'none' }}
               />
             </div>
           </button>
