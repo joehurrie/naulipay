@@ -370,6 +370,23 @@ export interface VehicleQROut {
   expires_at: string
 }
 
+export interface VehicleLocationOut {
+  latitude: number
+  longitude: number
+  updated_at: string | null
+}
+
+export interface FavoriteVehicleOut {
+  favorite_id: string
+  vehicle_id: string
+  plate_number: string
+  category: VehicleCategory
+  status: VehicleStatus
+  route_id: string | null
+  location: VehicleLocationOut | null
+  favorited_at: string
+}
+
 export interface VehicleUpdate {
   make?: string | null
   model?: string | null

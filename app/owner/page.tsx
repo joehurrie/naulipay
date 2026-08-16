@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { useRequireRole } from '@/lib/require-role'
 import {
   paymentConfigApi, payoutsApi, routesApi, transactionsApi, vehiclesApi
 } from '@/lib/api'
@@ -30,6 +31,7 @@ type Period = 'daily' | 'weekly' | 'monthly'
 
 export default function OwnerDashboard() {
   const { user, logout } = useAuth()
+  const { isReady } = useRequireRole('owner')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [period, setPeriod] = useState<Period>('daily')
 
@@ -218,6 +220,8 @@ export default function OwnerDashboard() {
     { id: 'credit', label: 'Credit', icon: <Landmark className="w-4 h-4" /> },
   ]
 
+  if (!isReady) return null
+
   return (
     <div className="min-h-screen bg-brand-neutral flex">
       {/* Sidebar */}
@@ -259,12 +263,6 @@ export default function OwnerDashboard() {
         </nav>
 
         <div className="p-4 border-t border-gray-100 space-y-1">
-          <Link href="/commuter" className="sidebar-nav-item sidebar-nav-inactive w-full">
-            <Users className="w-4 h-4" /> Commuter App
-          </Link>
-          <Link href="/admin" className="sidebar-nav-item sidebar-nav-inactive w-full">
-            <Settings className="w-4 h-4" /> Admin
-          </Link>
           <button onClick={logout} className="sidebar-nav-item sidebar-nav-inactive w-full text-left">
             <LogOut className="w-4 h-4" /> Log Out
           </button>

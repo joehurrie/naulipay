@@ -3,15 +3,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Wallet, MapPin, Star, CreditCard, TrendingUp, Clock,
+  Wallet, MapPin, Star, CreditCard, Clock,
   CheckCircle, XCircle, ChevronRight, Plus, Bell, LayoutDashboard,
-  History, Settings, LogOut, Navigation, Zap, Share2,
+  History, LogOut, Navigation, Zap, Share2,
   AlertTriangle, Loader2
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { useRequireRole } from '@/lib/require-role'
 import {
-  loyaltyApi, notificationsApi, transactionsApi, tripsApi, vehiclesApi, walletApi
+  favoritesApi, loyaltyApi, notificationsApi, transactionsApi, tripsApi, vehiclesApi, walletApi
 } from '@/lib/api'
 import {
   currentUser as mockUser, mockTrips, vehicleEmojis, vehicleLabels
@@ -20,12 +21,13 @@ import {
   formatCurrency, formatDate, formatDateTime, calculateCreditProgress, getInitials,
   tripStatusColor, transactionStatusColor, vehicleStatusColor
 } from '@/lib/utils'
-import type { NotificationOut, TransactionOut, TripOut, VehicleCategory, VehicleOut } from '@/lib/types'
+import type { FavoriteVehicleOut, NotificationOut, TransactionOut, TripOut, VehicleOut } from '@/lib/types'
 
-type Tab = 'overview' | 'trips' | 'wallet' | 'book'
+type Tab = 'overview' | 'trips' | 'wallet' | 'track'
 
 export default function CommuterDashboard() {
   const { user, logout } = useAuth()
+  const { isReady } = useRequireRole('commuter')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   // Live data
@@ -34,7 +36,7 @@ export default function CommuterDashboard() {
   const [trips, setTrips] = useState<TripOut[]>([])
   const [transactions, setTransactions] = useState<TransactionOut[]>([])
   const [notifications, setNotifications] = useState<NotificationOut[]>([])
-  const [nearbyVehicles, setNearbyVehicles] = useState<VehicleOut[]>([])
+  const [favorites, setFavorites] = useState<FavoriteVehicleOut[]>([])
 
   // UI state
   const [loading, setLoading] = useState<Record<string, boolean>>({})
@@ -45,11 +47,9 @@ export default function CommuterDashboard() {
   const [topupStatus, setTopupStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [topupMsg, setTopupMsg] = useState('')
 
-  const [selectedRideType, setSelectedRideType] = useState<VehicleCategory>('matatu')
-  const [fromLoc, setFromLoc] = useState('CBD')
-  const [toLoc, setToLoc] = useState('Westlands')
-  const [bookingStatus, setBookingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [createdTrip, setCreatedTrip] = useState<TripOut | null>(null)
+  const [plateQuery, setPlateQuery] = useState('')
+  const [searchResult, setSearchResult] = useState<VehicleOut | null>(null)
+  const [searchStatus, setSearchStatus] = useState<'idle' | 'loading' | 'not_found' | 'error'>('idle')
 
   const displayName = user?.full_name || user?.phone_number || mockUser.name
 
@@ -80,11 +80,9 @@ export default function CommuterDashboard() {
       }
     })
 
-    // try to load nearby vehicles around Nairobi CBD
-    load('nearby', async () => {
+    load('favorites', async () => {
       try {
-        const res = await vehiclesApi.nearby(-1.2921, 36.8219)
-        setNearbyVehicles(res.vehicles.slice(0, 4))
+        setFavorites(await favoritesApi.list())
       } catch { /* ignore */ }
     })
   }, [])
@@ -110,39 +108,39 @@ export default function CommuterDashboard() {
     }
   }
 
-  const handleBook = async (e: React.FormEvent) => {
+  const handleSearchVehicle = async (e: React.FormEvent) => {
     e.preventDefault()
-    setBookingStatus('loading')
+    if (!plateQuery.trim()) return
+    setSearchStatus('loading')
+    setSearchResult(null)
     try {
-      // Use Nairobi coordinates placeholders
-      const coords: Record<string, { lat: number; lng: number }> = {
-        CBD: { lat: -1.2921, lng: 36.8219 },
-        Westlands: { lat: -1.2672, lng: 36.8100 },
-        Eastleigh: { lat: -1.2742, lng: 36.8365 },
-        Karen: { lat: -1.3192, lng: 36.7800 },
-        Kasarani: { lat: -1.2200, lng: 36.8900 },
-        Rongai: { lat: -1.3955, lng: 36.7664 },
-        Parklands: { lat: -1.2616, lng: 36.8174 },
-        JKIA: { lat: -1.3223, lng: 36.9277 },
-        Kilimani: { lat: -1.2888, lng: 36.7876 },
-        Roysambu: { lat: -1.2138, lng: 36.8867 },
+      const results = await vehiclesApi.list(plateQuery.trim())
+      if (results.length === 0) {
+        setSearchStatus('not_found')
+      } else {
+        setSearchResult(results[0])
+        setSearchStatus('idle')
       }
-      const pickup = coords[fromLoc] || coords.CBD
-      const dropoff = coords[toLoc] || coords.Westlands
+    } catch {
+      setSearchStatus('error')
+    }
+  }
 
-      const trip = await tripsApi.create({
-        category: selectedRideType,
-        pickup_lat: pickup.lat,
-        pickup_lng: pickup.lng,
-        dropoff_lat: dropoff.lat,
-        dropoff_lng: dropoff.lng,
-      })
-      setCreatedTrip(trip)
-      setBookingStatus('success')
-      const updated = await tripsApi.list()
-      setTrips(updated)
+  const handleFavorite = async (vehicleId: string) => {
+    try {
+      await vehiclesApi.favorite(vehicleId)
+      setFavorites(await favoritesApi.list())
     } catch (err) {
-      setBookingStatus('error')
+      console.error(err)
+    }
+  }
+
+  const handleUnfavorite = async (vehicleId: string) => {
+    try {
+      await vehiclesApi.unfavorite(vehicleId)
+      setFavorites((prev) => prev.filter((f) => f.vehicle_id !== vehicleId))
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -171,7 +169,7 @@ export default function CommuterDashboard() {
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'trips', label: 'Trip History', icon: <History className="w-4 h-4" /> },
     { id: 'wallet', label: 'Wallet', icon: <Wallet className="w-4 h-4" /> },
-    { id: 'book', label: 'Book Ride', icon: <Navigation className="w-4 h-4" /> },
+    { id: 'track', label: 'Track Matatu', icon: <MapPin className="w-4 h-4" /> },
   ]
 
   const displayedTrips = trips.length > 0 ? trips : mockTrips.map((t) => ({
@@ -188,6 +186,8 @@ export default function CommuterDashboard() {
     share_link_token: '',
     requested_at: t.date,
   } as TripOut))
+
+  if (!isReady) return null
 
   return (
     <div className="min-h-screen bg-brand-neutral flex">
@@ -229,12 +229,6 @@ export default function CommuterDashboard() {
         </nav>
 
         <div className="p-4 border-t border-gray-100 space-y-1">
-          <Link href="/owner" className="sidebar-nav-item sidebar-nav-inactive w-full">
-            <TrendingUp className="w-4 h-4" /> Owner Portal
-          </Link>
-          <Link href="/admin" className="sidebar-nav-item sidebar-nav-inactive w-full">
-            <Settings className="w-4 h-4" /> Admin
-          </Link>
           <button onClick={logout} className="sidebar-nav-item sidebar-nav-inactive w-full text-left">
             <LogOut className="w-4 h-4" /> Log Out
           </button>
@@ -528,98 +522,86 @@ export default function CommuterDashboard() {
               </motion.div>
             )}
 
-            {activeTab === 'book' && (
-              <motion.div key="book" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            {activeTab === 'track' && (
+              <motion.div key="track" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div className="card-white p-6">
-                  <h3 className="font-semibold text-brand-charcoal mb-5">Book a Ride</h3>
-                  <form onSubmit={handleBook} className="space-y-5">
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-brand-charcoal mb-1.5">Pickup</label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <select value={fromLoc} onChange={(e) => setFromLoc(e.target.value)} className="input-light pl-9">
-                            {['CBD', 'Westlands', 'Eastleigh', 'Karen', 'Kasarani', 'Rongai', 'Parklands', 'JKIA', 'Kilimani', 'Roysambu'].map((l) => (
-                              <option key={l} value={l}>{l}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-brand-charcoal mb-1.5">Drop-off</label>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <select value={toLoc} onChange={(e) => setToLoc(e.target.value)} className="input-light pl-9">
-                            {['Westlands', 'CBD', 'Eastleigh', 'Karen', 'Kasarani', 'Rongai', 'Parklands', 'JKIA', 'Kilimani', 'Roysambu'].map((l) => (
-                              <option key={l} value={l}>{l}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
+                  <h3 className="font-semibold text-brand-charcoal mb-1">Find a matatu</h3>
+                  <p className="text-gray-400 text-sm mb-5">Search by plate number to check its status and save it as a favorite.</p>
+                  <form onSubmit={handleSearchVehicle} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={plateQuery}
+                        onChange={(e) => setPlateQuery(e.target.value)}
+                        placeholder="e.g. KDA 123X"
+                        className="input-light pl-11"
+                      />
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-brand-charcoal mb-2">Ride type</label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {(['matatu', 'taxi', 'boda'] as VehicleCategory[]).map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setSelectedRideType(v)}
-                            className={`p-4 rounded-xl border-2 text-center transition-all duration-200 ${
-                              selectedRideType === v
-                                ? 'border-brand-orange bg-brand-orange/5'
-                                : 'border-gray-200 hover:border-brand-orange/40'
-                            }`}
-                          >
-                            <div className="text-3xl mb-1">{vehicleEmojis[v]}</div>
-                            <div className="font-semibold text-brand-charcoal text-sm capitalize">{vehicleLabels[v]}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {bookingStatus === 'success' && createdTrip && (
-                      <div className="text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl text-sm">
-                        Ride booked successfully! Trip #{createdTrip.id.slice(0, 8)}. Status: {createdTrip.status.replace('_', ' ')}.
-                      </div>
-                    )}
-                    {bookingStatus === 'error' && (
-                      <div className="text-red-600 bg-red-50 px-4 py-3 rounded-xl text-sm">
-                        Booking failed. Please ensure you have a wallet balance or try again.
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={bookingStatus === 'loading'}
-                      className="w-full btn-primary py-4 text-base flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      {bookingStatus === 'loading' ? (
-                        <><Loader2 className="w-5 h-5 animate-spin" /> Booking...</>
-                      ) : (
-                        <><CheckCircle className="w-5 h-5" /> Confirm Booking</>
-                      )}
+                    <button type="submit" disabled={searchStatus === 'loading'} className="btn-primary px-5 disabled:opacity-60">
+                      {searchStatus === 'loading' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Find'}
                     </button>
                   </form>
 
-                  {nearbyVehicles.length > 0 && (
-                    <div className="mt-8">
-                      <h4 className="font-medium text-brand-charcoal mb-3">Nearby vehicles</h4>
-                      <div className="space-y-2">
-                        {nearbyVehicles.map((v) => (
-                          <div key={v.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                            <span className="text-xl">{vehicleEmojis[v.category]}</span>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-brand-charcoal">{v.plate_number}</p>
-                              <p className="text-xs text-gray-400">{v.make || v.model || v.category}</p>
-                            </div>
-                            <span className={`text-xs ${vehicleStatusColor[v.status]}`}>{v.status}</span>
-                          </div>
-                        ))}
+                  {searchStatus === 'not_found' && (
+                    <p className="text-sm text-gray-400 mt-4">No matatu found with that plate number.</p>
+                  )}
+                  {searchStatus === 'error' && (
+                    <p className="text-sm text-red-500 mt-4">Search failed. Please try again.</p>
+                  )}
+
+                  {searchResult && (
+                    <div className="mt-5 flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                      <span className="text-2xl">{vehicleEmojis[searchResult.category]}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-brand-charcoal text-sm">{searchResult.plate_number}</p>
+                        <p className="text-gray-400 text-xs">{vehicleLabels[searchResult.category]}</p>
                       </div>
+                      <span className={`text-xs ${vehicleStatusColor[searchResult.status]}`}>{searchResult.status}</span>
+                      {favorites.some((f) => f.vehicle_id === searchResult.id) ? (
+                        <span className="text-xs text-brand-orange font-medium px-3 py-1.5">Favorited</span>
+                      ) : (
+                        <button
+                          onClick={() => handleFavorite(searchResult.id)}
+                          className="text-xs bg-brand-charcoal text-white px-3 py-1.5 rounded-lg hover:bg-brand-orange transition-colors"
+                        >
+                          Add to favorites
+                        </button>
+                      )}
                     </div>
                   )}
+                </div>
+
+                <div className="card-white p-6">
+                  <h3 className="font-semibold text-brand-charcoal mb-1">My favorite matatus</h3>
+                  <p className="text-gray-400 text-sm mb-5">{favorites.length} tracked</p>
+                  <div className="space-y-3">
+                    {favorites.map((f) => (
+                      <div key={f.favorite_id} className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
+                        <span className="text-2xl">{vehicleEmojis[f.category]}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-brand-charcoal text-sm">{f.plate_number}</p>
+                          <p className="text-gray-400 text-xs">
+                            {f.location
+                              ? `Last seen ${formatDateTime(f.location.updated_at || f.favorited_at)}`
+                              : 'No recent location'}
+                          </p>
+                        </div>
+                        <span className={`text-xs ${vehicleStatusColor[f.status]}`}>{f.status}</span>
+                        <button
+                          onClick={() => handleUnfavorite(f.vehicle_id)}
+                          className="text-xs text-gray-400 hover:text-red-500 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    {favorites.length === 0 && (
+                      <p className="text-sm text-gray-400">
+                        No favorites yet — search for a matatu above and add it to start tracking.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}

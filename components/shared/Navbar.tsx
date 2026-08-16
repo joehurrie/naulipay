@@ -7,6 +7,7 @@ import { LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
+import { DASHBOARD_PATH } from '@/lib/require-role'
 import { getInitials } from '@/lib/utils'
 
 interface NavbarProps {
@@ -36,12 +37,9 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     { href: '/#loyalty', label: 'Rewards' },
   ]
 
+  const dashLabels: Record<string, string> = { commuter: 'Commuter', owner: 'Fleet Owner', admin: 'Admin', driver: 'Commuter' }
   const dashLinks = user
-    ? [
-        { href: '/commuter', label: 'Commuter' },
-        { href: '/owner', label: 'Fleet Owner' },
-        { href: '/admin', label: 'Admin' },
-      ]
+    ? [{ href: DASHBOARD_PATH[user.role], label: dashLabels[user.role] }]
     : []
 
   return (

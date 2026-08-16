@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth'
+import { useRequireRole } from '@/lib/require-role'
 import { adminApi, healthApi, transactionsApi, vehiclesApi } from '@/lib/api'
 import { vehicleEmojis, vehicleLabels } from '@/lib/mock-data'
 import {
@@ -43,6 +44,7 @@ const emptyInviteForm = {
 
 export default function AdminDashboard() {
   const { user, logout, requestOtp } = useAuth()
+  const { isReady } = useRequireRole('admin')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [searchQuery, setSearchQuery] = useState('')
   const [txFilter, setTxFilter] = useState<'all' | string>('all')
@@ -269,6 +271,10 @@ export default function AdminDashboard() {
     { id: 'telemetry', label: 'Telemetry', icon: <Activity className="w-4 h-4" /> },
   ]
 
+  // Nothing rendered until we know this viewer is actually an admin —
+  // useRequireRole is already redirecting them away otherwise.
+  if (!isReady) return null
+
   return (
     <div className="min-h-screen bg-brand-neutral flex">
       <aside className="hidden lg:flex flex-col w-64 bg-brand-charcoal fixed h-full">
@@ -313,12 +319,6 @@ export default function AdminDashboard() {
         </nav>
 
         <div className="p-4 border-t border-white/10 space-y-1">
-          <Link href="/commuter" className="sidebar-nav-item text-white/60 hover:bg-white/10 hover:text-white w-full">
-            <Users className="w-4 h-4" /> Commuter App
-          </Link>
-          <Link href="/owner" className="sidebar-nav-item text-white/60 hover:bg-white/10 hover:text-white w-full">
-            <Truck className="w-4 h-4" /> Owner Portal
-          </Link>
           <button onClick={logout} className="sidebar-nav-item text-white/60 hover:bg-white/10 hover:text-white w-full text-left">
             <LogOut className="w-4 h-4" /> Log Out
           </button>

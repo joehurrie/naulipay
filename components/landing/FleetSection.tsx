@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import { Bus } from 'lucide-react'
 import { mapVehiclePins } from '@/lib/mock-data'
-import { useRide } from '@/lib/ride-context'
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
@@ -15,8 +14,6 @@ const fadeUp = (delay = 0) => ({
 const matutuPins = mapVehiclePins
 
 export default function FleetSection() {
-  const { rideSearched } = useRide()
-
   return (
     <section
       id="fleet"
@@ -34,9 +31,7 @@ export default function FleetSection() {
               Real-time matatu tracking<br />across Nairobi
             </h2>
             <p className="body-lg text-zinc-500 max-w-xs sm:text-right">
-              {rideSearched
-                ? 'Showing active matatus matching your search'
-                : 'See exactly where matatus are right now'}
+              See exactly where matatus are right now
             </p>
           </div>
         </motion.div>
@@ -78,18 +73,6 @@ export default function FleetSection() {
               className="absolute transform -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${pin.lng}%`, top: `${pin.lat}%` }}
             >
-              {rideSearched && (
-                <div
-                  className="absolute rounded-full animate-ping"
-                  style={{
-                    backgroundColor: '#FF5F00',
-                    width: '32px', height: '32px',
-                    top: 0, left: 0,
-                    opacity: 0.3,
-                    animationDuration: `${1.2 + i * 0.3}s`,
-                  }}
-                />
-              )}
               <div className="relative w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg z-10 border border-white/20 bg-brand-orange">
                 <Bus className="w-4 h-4 text-white" />
               </div>
@@ -116,9 +99,7 @@ export default function FleetSection() {
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-950/90 to-transparent p-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-brand-orange animate-pulse" />
-              <span className="text-zinc-400 text-xs">
-                {rideSearched ? 'Showing your matched matatus' : 'All matatus reporting position'}
-              </span>
+              <span className="text-zinc-400 text-xs">All matatus reporting position</span>
             </div>
             <span className="text-zinc-600 text-[10px] font-mono">Updated just now</span>
           </div>
