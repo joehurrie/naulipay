@@ -11,7 +11,7 @@ const slides = [
     title: 'Never miss a ride',
     description: 'Get real-time alerts as your matatu approaches. Live GPS means zero guesswork — just show up and board.',
     icon: <Bell className="w-5 h-5" />,
-    image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=1200&q=85',
+    image: '/phone.jpg',
     accentColor: '#FF5F00',
   },
   {
@@ -20,7 +20,7 @@ const slides = [
     title: 'Instant transaction with your Naulipay wallet',
     description: 'Top up once, ride all day. Your Naulipay wallet balance deducts in milliseconds — no cash, no change, no friction.',
     icon: <Wallet className="w-5 h-5" />,
-    image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&q=85',
+    image: '/car.jpg',
     accentColor: '#FF7A1A',
   },
   {
@@ -29,7 +29,7 @@ const slides = [
     title: 'Tap pay go with your NauliPass NFC',
     description: 'Hold your NauliPass NFC card to any terminal. Board in under 2 seconds and you\'re already moving.',
     icon: <CreditCard className="w-5 h-5" />,
-    image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=1200&q=85',
+    image: '/band.jpg',
     accentColor: '#CC4A00',
   },
 ]
@@ -109,7 +109,7 @@ export default function VehicleShowcaseSection() {
               <motion.p
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="label-sm text-zinc-500 mb-6"
+                className="label-sm text-brand-orange mb-6"
               >
                 Our fleet
               </motion.p>
@@ -118,10 +118,10 @@ export default function VehicleShowcaseSection() {
 
               {/* Dynamic heading with typing effect */}
               <div className="mt-4">
-                <h2 className="heading-lg text-white mb-4 min-h-[120px] sm:min-h-[90px]">
+                <h2 className="heading-lg text-brand-orange mb-4 min-h-[120px] sm:min-h-[90px]">
                   <TypingText key={`title-${active}`} text={slide.title} />
                 </h2>
-                <p className="text-zinc-400 text-base sm:text-lg font-light leading-relaxed mb-8 max-w-md">
+                <p className="text-brand-orange/80 text-base sm:text-lg font-light leading-relaxed mb-8 max-w-md">
                   {slide.description}
                 </p>
 

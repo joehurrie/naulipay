@@ -9,7 +9,7 @@ export default function BrandSection() {
       {/* ── Background: city traffic image at low opacity ── */}
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1600&q=80)' }}
+        style={{ backgroundImage: 'url(/Desktop%20-%205.jpg)' }}
       />
       {/* Dark vignette — heavier on edges, lighter in centre so text glows through */}
       <div className="absolute inset-0 bg-gradient-to-r from-black via-black/60 to-black" />

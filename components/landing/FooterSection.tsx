@@ -27,7 +27,7 @@ export default function FooterSection() {
             <div className="flex items-center gap-2 mb-5">
               <Link href="/" className="flex items-center flex-shrink-0">
                 <img
-                  src="/logo.svg"
+                  src="/logo.jpg"
                   alt="Naulipay"
                   className="h-8 w-auto"
                 />
