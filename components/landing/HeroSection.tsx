@@ -80,7 +80,7 @@ export default function HeroSection() {
             className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14"
           >
             <a href="#track" className="btn-primary px-9 py-3.5 text-sm font-medium">
-              Track a Matatu
+              Book a Ride
               <ArrowRight className="w-4 h-4" />
             </a>
             <a href="#how-it-works" className="btn-outline px-9 py-3.5 text-sm font-medium">

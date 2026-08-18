@@ -46,6 +46,33 @@ export default function TrackMatatuSection() {
     if (!phone) return
     setStep('processing')
     setTimeout(() => {
+      if (selectedMatatu) {
+        const newTrip = {
+          id: `T-${Math.floor(1000 + Math.random() * 9000)}`,
+          vehicleType: selectedMatatu.type,
+          category: selectedMatatu.type,
+          route: `${pickup || 'CBD'} → ${destination || 'Westlands'}`,
+          from: pickup || 'CBD',
+          to: destination || 'Westlands',
+          fare: selectedMatatu.fare,
+          status: 'completed',
+          date: new Date().toISOString().split('T')[0],
+          requested_at: new Date().toISOString(),
+          driver: 'Matatu Driver',
+          plate: selectedMatatu.plate,
+          points: Math.floor(selectedMatatu.fare / 5),
+          paymentMethod: 'mpesa',
+          duration: 'Scheduled',
+          fare_estimate: { estimated_total: selectedMatatu.fare }
+        }
+        try {
+          const existing = JSON.parse(localStorage.getItem('naulipass_user_trips') || '[]')
+          localStorage.setItem('naulipass_user_trips', JSON.stringify([newTrip, ...existing]))
+          window.dispatchEvent(new Event('naulipass_trip_added'))
+        } catch (err) {
+          console.error(err)
+        }
+      }
       setStep('success')
     }, 2000)
   }
@@ -299,7 +326,7 @@ export default function TrackMatatuSection() {
                     key="success"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center h-full gap-4 text-center py-8 absolute inset-0 w-full"
+                    className="flex flex-col items-center justify-center h-full gap-4 text-center py-8 absolute inset-0 w-full px-6"
                   >
                     <div className="relative">
                       <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl" />
@@ -308,14 +335,11 @@ export default function TrackMatatuSection() {
                       </div>
                     </div>
                     <div className="mt-2">
-                      <h3 className="text-xl font-bold text-white mb-1">Booking Confirmed!</h3>
-                      <p className="text-zinc-400 text-sm max-w-[240px] mx-auto leading-relaxed">
-                        Your seat in <span className="text-white font-semibold">{selectedMatatu?.plate}</span> is reserved. The matatu is {selectedMatatu?.time}.
+                      <h3 className="text-xl font-bold text-white mb-2">Booking Confirmed!</h3>
+                      <p className="text-zinc-300 text-sm max-w-[320px] mx-auto leading-relaxed">
+                        thank you for your booking on vehicle <span className="text-brand-orange font-semibold">{selectedMatatu?.plate}</span>... your payment is well received, enjoy ride
                       </p>
                     </div>
-                    <button onClick={resetForm} className="btn-primary px-8 py-3 text-sm font-semibold mt-6 shadow-brand">
-                      Book Another Ride
-                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>

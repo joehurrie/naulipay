@@ -133,7 +133,7 @@ export const allUsers: User[] = [
   { id: 'USR-4456', name: 'Fatima Al-Rashid', phone: '+254 721 987 654', email: 'fatima.r@email.com', cardId: 'NP-CARD-00089', walletBalance: 5820, loyaltyPoints: 6230, totalTrips: 72, creditEligible: true, joinDate: '2023-09-03', status: 'active' },
   { id: 'USR-3317', name: 'David Mwangi', phone: '+254 733 112 233', email: 'david.mwangi@email.com', cardId: 'NP-CARD-00201', walletBalance: 340, loyaltyPoints: 920, totalTrips: 18, creditEligible: false, joinDate: '2024-05-22', status: 'active' },
   { id: 'USR-7703', name: 'Sarah Otieno', phone: '+254 700 445 566', email: 'sarah.o@email.com', cardId: 'NP-CARD-00156', walletBalance: 12400, loyaltyPoints: 8900, totalTrips: 94, creditEligible: true, joinDate: '2023-06-11', status: 'active' },
-  { id: 'USR-2241', name: 'Kevin Njoroge', phone: '+254 745 778 899', email: 'kevin.n@email.com', cardId: 'NP-CARD-00344', walletBalance: 0, loyaltyPoints: 200, totalTrips: 6, creditEligible: false, joinDate: '2024-07-30', status: 'suspended' },
+  { id: 'USR-2241', name: 'Kevin Njoroge', phone: '+254 745 778 899', email: 'kevin.n@email.com', cardId: 'NP-CARD-00344', walletBalance: 1450, loyaltyPoints: 200, totalTrips: 6, creditEligible: false, joinDate: '2024-07-30', status: 'suspended' },
   { id: 'USR-9912', name: 'Lucia Wambua', phone: '+254 710 234 567', email: 'lucia.w@email.com', cardId: 'NP-CARD-00078', walletBalance: 7800, loyaltyPoints: 11250, totalTrips: 128, creditEligible: true, joinDate: '2023-02-19', status: 'active' },
   { id: 'USR-5581', name: 'Omar Farah', phone: '+254 728 345 678', email: 'omar.f@email.com', cardId: 'NP-CARD-00290', walletBalance: 1200, loyaltyPoints: 3400, totalTrips: 43, creditEligible: false, joinDate: '2024-03-08', status: 'active' },
 ]

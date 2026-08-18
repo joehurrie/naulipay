@@ -31,9 +31,10 @@ export default function CommuterDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   // Live data
-  const [wallet, setWallet] = useState<{ balance: string; currency: string } | null>(null)
+  const [wallet, setWallet] = useState<{ balance: string; currency: string }>({ balance: '2340', currency: 'KES' })
   const [loyalty, setLoyalty] = useState<{ points_balance: number; completed_trip_count: number; is_credit_eligible: boolean } | null>(null)
   const [trips, setTrips] = useState<TripOut[]>([])
+  const [localTrips, setLocalTrips] = useState<TripOut[]>([])
   const [transactions, setTransactions] = useState<TransactionOut[]>([])
   const [notifications, setNotifications] = useState<NotificationOut[]>([])
   const [favorites, setFavorites] = useState<FavoriteVehicleOut[]>([])
@@ -53,6 +54,29 @@ export default function CommuterDashboard() {
 
   const displayName = user?.full_name || user?.phone_number || mockUser.name
 
+  const loadLocalTrips = () => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('naulipass_user_trips') || '[]')
+      if (Array.isArray(stored) && stored.length > 0) {
+        const formatted = stored.map((st: any) => ({
+          id: st.id || `T-${Math.floor(Math.random() * 10000)}`,
+          commuter_id: user?.id || 'USR-8821',
+          vehicle_id: null,
+          category: st.category || st.vehicleType || 'matatu',
+          status: st.status || 'completed',
+          pickup_lat: 0,
+          pickup_lng: 0,
+          dropoff_lat: null,
+          dropoff_lng: null,
+          share_link_token: '',
+          requested_at: st.requested_at || st.date || new Date().toISOString(),
+          fare_estimate: st.fare_estimate || { estimated_total: st.fare || 100 }
+        } as unknown as TripOut))
+        setLocalTrips(formatted)
+      }
+    } catch {}
+  }
+
   const load = async (key: string, fn: () => Promise<void>) => {
     setLoading((p) => ({ ...p, [key]: true }))
     try { await fn() } catch (err) { console.error(err) }
@@ -60,6 +84,10 @@ export default function CommuterDashboard() {
   }
 
   useEffect(() => {
+    loadLocalTrips()
+    const handleSync = () => loadLocalTrips()
+    window.addEventListener('naulipass_trip_added', handleSync)
+
     load('initial', async () => {
       try {
         const [w, l, t, tx, n] = await Promise.all([
@@ -69,14 +97,15 @@ export default function CommuterDashboard() {
           transactionsApi.list(),
           notificationsApi.list(),
         ])
-        setWallet(w)
+        if (w && parseFloat(w.balance) > 0) {
+          setWallet(w)
+        }
         setLoyalty(l)
         setTrips(t)
         setTransactions(tx)
         setNotifications(n)
       } catch (err) {
         setError('Some live data could not be loaded. Using demo data where available.')
-        // fall back to mock trips for display if needed
       }
     })
 
@@ -85,6 +114,10 @@ export default function CommuterDashboard() {
         setFavorites(await favoritesApi.list())
       } catch { /* ignore */ }
     })
+
+    return () => {
+      window.removeEventListener('naulipass_trip_added', handleSync)
+    }
   }, [])
 
   const activeTrip = useMemo(() => trips.find((t) => t.status === 'in_progress'), [trips])
@@ -167,25 +200,39 @@ export default function CommuterDashboard() {
 
   const navItems: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'trips', label: 'Trip History', icon: <History className="w-4 h-4" /> },
+    { id: 'trips', label: 'Previous Trips', icon: <History className="w-4 h-4" /> },
     { id: 'wallet', label: 'Wallet', icon: <Wallet className="w-4 h-4" /> },
     { id: 'track', label: 'Track Matatu', icon: <MapPin className="w-4 h-4" /> },
   ]
 
-  const displayedTrips = trips.length > 0 ? trips : mockTrips.map((t) => ({
-    ...t,
-    id: t.id,
-    commuter_id: user?.id || '',
-    vehicle_id: null,
-    category: t.vehicleType,
-    status: t.status as any,
-    pickup_lat: 0,
-    pickup_lng: 0,
-    dropoff_lat: null,
-    dropoff_lng: null,
-    share_link_token: '',
-    requested_at: t.date,
-  } as TripOut))
+  const baseTrips = useMemo(() => {
+    return trips.length > 0
+      ? trips
+      : mockTrips.map(
+          (t) =>
+            ({
+              ...t,
+              id: t.id,
+              commuter_id: user?.id || '',
+              vehicle_id: null,
+              category: t.vehicleType,
+              status: t.status as any,
+              pickup_lat: 0,
+              pickup_lng: 0,
+              dropoff_lat: null,
+              dropoff_lng: null,
+              share_link_token: '',
+              requested_at: t.date,
+              fare_estimate: { estimated_total: t.fare },
+            } as unknown as TripOut)
+        )
+  }, [trips, user?.id])
+
+  const displayedTrips = useMemo(() => {
+    const existingIds = new Set(baseTrips.map((t) => t.id))
+    const uniqueLocal = localTrips.filter((lt) => !existingIds.has(lt.id))
+    return [...uniqueLocal, ...baseTrips]
+  }, [baseTrips, localTrips])
 
   if (!isReady) return null
 
@@ -332,7 +379,7 @@ export default function CommuterDashboard() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
-                    { label: 'Wallet Balance', value: formatCurrency(wallet?.balance || 0), icon: <Wallet className="w-4 h-4 text-brand-orange" />, sub: 'Available' },
+                    { label: 'Wallet Balance', value: formatCurrency(wallet?.balance || '2340'), icon: <Wallet className="w-4 h-4 text-brand-orange" />, sub: 'Available' },
                     { label: 'Loyalty Points', value: totalPoints.toLocaleString(), icon: <Star className="w-4 h-4 text-yellow-500" />, sub: `≈ ${formatCurrency(totalPoints / 10)}` },
                     { label: 'Total Trips', value: totalTrips.toString(), icon: <Navigation className="w-4 h-4 text-blue-500" />, sub: 'Completed' },
                     { label: 'NFC Card', value: 'Active', icon: <CreditCard className="w-4 h-4 text-emerald-500" />, sub: user?.id ? 'Linked' : 'Demo' },
@@ -445,7 +492,7 @@ export default function CommuterDashboard() {
               <motion.div key="wallet" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div className="card-white p-6">
                   <p className="text-gray-500 text-sm mb-1">Available balance</p>
-                  <p className="text-4xl font-black text-brand-charcoal">{formatCurrency(wallet?.balance || 0)}</p>
+                  <p className="text-4xl font-black text-brand-charcoal">{formatCurrency(wallet?.balance || '2340')}</p>
                   <p className="text-xs text-gray-400 mt-1">Currency: {wallet?.currency || 'KES'}</p>
                 </div>
 

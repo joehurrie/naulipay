@@ -2,48 +2,39 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, Wallet, CreditCard, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 const slides = [
   {
+    id: 'nfc',
+    title: 'Tap pay go with your NauliPass NFC',
+    description: 'Hold your NauliPass NFC card to any terminal. Board in under 2 seconds and you\'re already moving.',
+    image: '/band.jpg',
+  },
+  {
     id: 'reliability',
-    label: 'Reliability',
     title: 'Never miss a ride',
     description: 'Get real-time alerts as your matatu approaches. Live GPS means zero guesswork — just show up and board.',
-    icon: <Bell className="w-5 h-5" />,
     image: '/phone.jpg',
-    accentColor: '#FF5F00',
   },
   {
     id: 'wallet',
-    label: 'Payments',
     title: 'Instant transaction with your Naulipay wallet',
     description: 'Top up once, ride all day. Your Naulipay wallet balance deducts in milliseconds — no cash, no change, no friction.',
-    icon: <Wallet className="w-5 h-5" />,
-    image: '/car.jpg',
-    accentColor: '#FF7A1A',
-  },
-  {
-    id: 'nfc',
-    label: 'NauliPass NFC',
-    title: 'Tap pay go with your NauliPass NFC',
-    description: 'Hold your NauliPass NFC card to any terminal. Board in under 2 seconds and you\'re already moving.',
-    icon: <CreditCard className="w-5 h-5" />,
-    image: '/band.jpg',
-    accentColor: '#CC4A00',
+    image: '/car3.png',
   },
 ]
 
-// Typing effect component
-const TypingText = ({ text, initialDelay = 0.8 }: { text: string, initialDelay?: number }) => {
+// Typewriter effect component with smooth letter-by-letter animation
+const TypingText = ({ text, initialDelay = 0.15 }: { text: string, initialDelay?: number }) => {
   return (
     <span className="inline-block">
       {text.split('').map((char, index) => (
         <motion.span
           key={index}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.05, delay: initialDelay + (index * 0.03) }}
+          initial={{ opacity: 0, y: 2 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.05, delay: initialDelay + (index * 0.025), ease: 'easeOut' }}
         >
           {char}
         </motion.span>
@@ -70,67 +61,60 @@ export default function VehicleShowcaseSection() {
   return (
     <section
       id="value-props"
-      className="relative min-h-screen flex flex-col overflow-hidden bg-zinc-950 border-b border-zinc-900/60"
+      className="relative min-h-screen flex flex-col overflow-hidden bg-white border-b border-zinc-200"
     >
-      {/* ── Animated photo banner — full bg (crossfade) ── */}
-      {slides.map((s, index) => (
+      {/* ── Animating images: object-contain, animating left-to-right WITHOUT SCALING ── */}
+      <AnimatePresence mode="popLayout">
         <motion.div
-          key={s.id}
-          initial={false}
-          animate={{
-            opacity: active === index ? 1 : 0,
-            scale: active === index ? 1 : 1.02
-          }}
-          transition={{ duration: 2.5, ease: 'easeInOut' }}
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url(${s.image})`,
-            zIndex: active === index ? 1 : 0
-          }}
-        />
-      ))}
-
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-black/72" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+          key={slide.id}
+          initial={{ x: '-100%', opacity: 0 }}
+          animate={{ x: '0%', opacity: 1 }}
+          exit={{ x: '100%', opacity: 0 }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          className="absolute inset-0 flex items-center justify-center p-4"
+        >
+          <img
+            src={slide.image}
+            alt={slide.title}
+            className="w-full h-full object-contain"
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* Navbar spacer */}
       <div className="h-16 flex-shrink-0" />
 
-      {/* ── Content ── */}
-      <div className="flex-1 flex items-center relative z-10">
+      {/* ── Minimal Content on WHITE background ── */}
+      <div className="flex-1 flex items-center relative z-10 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="max-w-2xl">
 
-            {/* Left: Dynamic content */}
-            <div>
-              {/* Section label */}
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="label-sm text-brand-orange mb-6"
-              >
-                Our fleet
-              </motion.p>
+            {/* Section label */}
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="label-sm text-brand-orange mb-6"
+            >
+              Our fleet
+            </motion.p>
 
+            {/* Orange header text in smooth typewriter style */}
+            <div className="mt-4">
+              <h2 className="heading-lg text-brand-orange mb-4 min-h-[120px] sm:min-h-[90px]">
+                <TypingText key={`title-${active}`} text={slide.title} />
+              </h2>
 
+              {/* Paragraph in BLACK */}
+              <p className="text-black font-semibold text-base sm:text-lg leading-relaxed mb-8 max-w-md">
+                {slide.description}
+              </p>
 
-              {/* Dynamic heading with typing effect */}
-              <div className="mt-4">
-                <h2 className="heading-lg text-brand-orange mb-4 min-h-[120px] sm:min-h-[90px]">
-                  <TypingText key={`title-${active}`} text={slide.title} />
-                </h2>
-                <p className="text-brand-orange/80 text-base sm:text-lg font-light leading-relaxed mb-8 max-w-md">
-                  {slide.description}
-                </p>
-
-                <a href="#track" className="btn-primary px-8 py-3.5 text-sm font-medium inline-flex items-center justify-center gap-2">
-                  Track a Matatu
-                  <ArrowRight className="w-4 h-4" />
-                </a>
-              </div>
+              <a href="#track" className="btn-primary px-8 py-3.5 text-sm font-medium inline-flex items-center justify-center gap-2 shadow-lg shadow-brand-orange/20">
+                Book a Ride
+                <ArrowRight className="w-4 h-4" />
+              </a>
             </div>
+
           </div>
         </div>
       </div>
@@ -143,7 +127,7 @@ export default function VehicleShowcaseSection() {
               <button
                 key={i}
                 onClick={() => { setActive(i); setIsAutoPlaying(false) }}
-                className="relative h-0.5 flex-1 bg-zinc-800 rounded-full overflow-hidden"
+                className="relative h-1 flex-1 bg-zinc-200 rounded-full overflow-hidden"
               >
                 {active === i && isAutoPlaying && (
                   <motion.div

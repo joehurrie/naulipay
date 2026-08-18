@@ -50,10 +50,10 @@ export default function Navbar({ transparent = false }: NavbarProps) {
           {/* Logo — SVG wordmark */}
           <Link href="/" className="flex items-center flex-shrink-0">
             <Image
-              src="/logo.jpg"
+              src="/Naulipay Logo.svg"
               alt="Naulipay"
-              width={136}
-              height={34}
+              width={190}
+              height={32}
               priority
               className="h-8 w-auto"
             />

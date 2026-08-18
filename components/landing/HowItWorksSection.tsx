@@ -237,7 +237,7 @@ export default function HowItWorksSection() {
                 onClick={() => { document.getElementById('track')?.scrollIntoView({ behavior: 'smooth' }) }}
                 className="bg-black text-white font-medium px-8 py-3.5 rounded-full hover:bg-zinc-900 transition-colors text-sm border border-zinc-800"
               >
-                Track a Matatu
+                Book a Ride
               </button>
               <p className="text-white/60 text-xs font-light">Calculated in real-time</p>
             </motion.div>
