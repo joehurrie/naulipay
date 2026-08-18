@@ -61,58 +61,83 @@ export default function VehicleShowcaseSection() {
   return (
     <section
       id="value-props"
-      className="relative min-h-screen flex flex-col overflow-hidden bg-white border-b border-zinc-200"
+      className="relative min-h-[600px] sm:min-h-screen flex flex-col justify-between overflow-hidden bg-white border-b border-zinc-200 py-12 sm:py-16"
     >
-      {/* ── Animating images: object-contain, animating left-to-right WITHOUT SCALING ── */}
-      <AnimatePresence mode="popLayout">
-        <motion.div
-          key={slide.id}
-          initial={{ x: '-100%', opacity: 0 }}
-          animate={{ x: '0%', opacity: 1 }}
-          exit={{ x: '100%', opacity: 0 }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 flex items-center justify-center p-4"
-        >
-          <img
-            src={slide.image}
-            alt={slide.title}
-            className="w-full h-full object-contain"
-          />
-        </motion.div>
-      </AnimatePresence>
-
       {/* Navbar spacer */}
-      <div className="h-16 flex-shrink-0" />
+      <div className="h-8 sm:h-16 flex-shrink-0" />
 
-      {/* ── Minimal Content on WHITE background ── */}
-      <div className="flex-1 flex items-center relative z-10 py-12">
+      {/* ── Main Responsive Grid ── */}
+      <div className="flex-1 flex items-center relative z-10 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-2xl">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
-            {/* Section label */}
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="label-sm text-brand-orange mb-6"
-            >
-              Our fleet
-            </motion.p>
+            {/* Left: Text Content */}
+            <div className="max-w-xl">
+              {/* Section label */}
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="label-sm text-brand-orange mb-4 sm:mb-6"
+              >
+                Our fleet
+              </motion.p>
 
-            {/* Orange header text in smooth typewriter style */}
-            <div className="mt-4">
-              <h2 className="heading-lg text-brand-orange mb-4 min-h-[120px] sm:min-h-[90px]">
-                <TypingText key={`title-${active}`} text={slide.title} />
-              </h2>
+              {/* Orange header text in smooth typewriter style */}
+              <div>
+                <h2 className="heading-lg text-brand-orange mb-4 min-h-[90px] sm:min-h-[100px]">
+                  <TypingText key={`title-${active}`} text={slide.title} />
+                </h2>
 
-              {/* Paragraph in BLACK */}
-              <p className="text-black font-semibold text-base sm:text-lg leading-relaxed mb-8 max-w-md">
-                {slide.description}
-              </p>
+                {/* ── Mobile-Only Image Placement (Between Heading and Paragraph on Small Devices) ── */}
+                <div className="block lg:hidden my-6 sm:my-8 relative w-full h-[280px] sm:h-[380px] overflow-hidden rounded-2xl shadow-xl">
+                  <AnimatePresence mode="popLayout">
+                    <motion.div
+                      key={`mobile-${slide.id}`}
+                      initial={{ x: '-100%', opacity: 0 }}
+                      animate={{ x: '0%', opacity: 1 }}
+                      exit={{ x: '100%', opacity: 0 }}
+                      transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute inset-0 flex items-center justify-center p-0"
+                    >
+                      <img
+                        src={slide.image}
+                        alt={slide.title}
+                        className="w-full h-full object-cover sm:object-contain drop-shadow-xl"
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
 
-              <a href="#track" className="btn-primary px-8 py-3.5 text-sm font-medium inline-flex items-center justify-center gap-2 shadow-lg shadow-brand-orange/20">
-                Book a Ride
-                <ArrowRight className="w-4 h-4" />
-              </a>
+                {/* Paragraph in BLACK */}
+                <p className="text-black font-semibold text-base sm:text-lg leading-relaxed mb-6 sm:mb-8 max-w-md">
+                  {slide.description}
+                </p>
+
+                <a href="#track" className="btn-primary px-6 sm:px-8 py-3 sm:py-3.5 text-xs sm:text-sm font-medium inline-flex items-center justify-center gap-2 shadow-lg shadow-brand-orange/20">
+                  Book a Ride
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+            </div>
+
+            {/* Desktop-Only Right Column Image Box */}
+            <div className="hidden lg:flex relative w-full h-[520px] items-center justify-center overflow-hidden rounded-3xl shadow-xl">
+              <AnimatePresence mode="popLayout">
+                <motion.div
+                  key={`desktop-${slide.id}`}
+                  initial={{ x: '-100%', opacity: 0 }}
+                  animate={{ x: '0%', opacity: 1 }}
+                  exit={{ x: '100%', opacity: 0 }}
+                  transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute inset-0 flex items-center justify-center p-0"
+                >
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    className="w-full h-full object-contain drop-shadow-xl"
+                  />
+                </motion.div>
+              </AnimatePresence>
             </div>
 
           </div>
@@ -120,7 +145,7 @@ export default function VehicleShowcaseSection() {
       </div>
 
       {/* ── Progress bar indicator ── */}
-      <div className="relative z-10 flex-shrink-0 pb-8">
+      <div className="relative z-10 flex-shrink-0 pt-6 sm:pt-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-2">
             {slides.map((_, i) => (
