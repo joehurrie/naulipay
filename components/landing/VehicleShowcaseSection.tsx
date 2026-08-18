@@ -89,7 +89,7 @@ export default function VehicleShowcaseSection() {
                 </h2>
 
                 {/* ── Mobile-Only Image Placement (Equal to Map Dimensions: h-[500px], rounded-3xl) ── */}
-                <div className="block lg:hidden my-6 sm:my-8 relative w-full h-[500px] overflow-hidden  ">
+                <div className="block lg:hidden my-6 sm:my-8 relative w-full h-[300px] overflow-hidden  ">
                   <AnimatePresence mode="popLayout">
                     <motion.div
                       key={`mobile-${slide.id}`}
