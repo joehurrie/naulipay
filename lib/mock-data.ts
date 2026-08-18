@@ -48,18 +48,6 @@ export interface User {
   status: 'active' | 'suspended'
 }
 
-export interface Transaction {
-  id: string
-  userId: string
-  userName: string
-  vehicleId: string
-  amount: number
-  type: 'fare' | 'commission' | 'credit' | 'payout'
-  status: 'completed' | 'pending' | 'failed'
-  timestamp: string
-  paymentMethod: PaymentMethod
-}
-
 // ─── Commuter Data ─────────────────────────────────────────────────────────────
 
 export const mockTrips: Trip[] = [
@@ -126,6 +114,18 @@ export const earningsData = {
   ],
 }
 
+export interface Transaction {
+  id: string
+  userId: string
+  userName: string
+  vehicleId: string
+  amount: number
+  type: string
+  status: string
+  timestamp: string
+  paymentMethod: string
+}
+
 // ─── Admin Data ────────────────────────────────────────────────────────────────
 
 export const allUsers: User[] = [
@@ -154,7 +154,6 @@ export const pendingVehicles = [
   { id: 'REG-0052', plate: 'KCG 884S', type: 'taxi' as VehicleType, owner: 'Mary Ndungu', submitted: '2024-08-12', docs: 'pending' },
   { id: 'REG-0053', plate: 'KBQ 112T', type: 'boda' as VehicleType, owner: 'John Gitau', submitted: '2024-08-12', docs: 'complete' },
 ]
-
 // ─── Map pins (Nairobi area) ───────────────────────────────────────────────────
 
 export const mapVehiclePins = [
