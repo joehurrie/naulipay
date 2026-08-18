@@ -88,8 +88,8 @@ export default function VehicleShowcaseSection() {
                   <TypingText key={`title-${active}`} text={slide.title} />
                 </h2>
 
-                {/* ── Mobile-Only Image Placement (Between Heading and Paragraph on Small Devices) ── */}
-                <div className="block lg:hidden my-6 sm:my-8 relative w-full h-[280px] sm:h-[380px] overflow-hidden rounded-2xl shadow-xl">
+                {/* ── Mobile-Only Image Placement (Equal to Map Dimensions: h-[500px], rounded-3xl) ── */}
+                <div className="block lg:hidden my-6 sm:my-8 relative w-full h-[500px] overflow-hidden  ">
                   <AnimatePresence mode="popLayout">
                     <motion.div
                       key={`mobile-${slide.id}`}
@@ -102,14 +102,14 @@ export default function VehicleShowcaseSection() {
                       <img
                         src={slide.image}
                         alt={slide.title}
-                        className="w-full h-full object-cover sm:object-contain drop-shadow-xl"
+                        className="w-full h-full object-cover sm:object-cover border-none"
                       />
                     </motion.div>
                   </AnimatePresence>
                 </div>
 
                 {/* Paragraph in BLACK */}
-                <p className="text-black font-semibold text-base sm:text-lg leading-relaxed mb-6 sm:mb-8 max-w-md">
+                <p className="text-black font-normal text-base sm:text-lg leading-relaxed mb-6 sm:mb-8 max-w-md">
                   {slide.description}
                 </p>
 
@@ -121,7 +121,7 @@ export default function VehicleShowcaseSection() {
             </div>
 
             {/* Desktop-Only Right Column Image Box */}
-            <div className="hidden lg:flex relative w-full h-[520px] items-center justify-center overflow-hidden rounded-3xl shadow-xl">
+            <div className="hidden lg:flex relative w-full h-[500px] items-center justify-center overflow-hidden  ">
               <AnimatePresence mode="popLayout">
                 <motion.div
                   key={`desktop-${slide.id}`}
@@ -134,7 +134,7 @@ export default function VehicleShowcaseSection() {
                   <img
                     src={slide.image}
                     alt={slide.title}
-                    className="w-full h-full object-contain drop-shadow-xl"
+                    className="w-full h-full object-cover"
                   />
                 </motion.div>
               </AnimatePresence>
