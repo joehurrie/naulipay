@@ -102,7 +102,7 @@ export default function VehicleShowcaseSection() {
                       <img
                         src={slide.image}
                         alt={slide.title}
-                        className="w-full h-full object-cover sm:object-cover border-none"
+                        className="w-full h-full object-contain sm:object-contain border-none"
                       />
                     </motion.div>
                   </AnimatePresence>
